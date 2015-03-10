@@ -40,6 +40,12 @@ class GetSetMethodNormalizerTest extends \PHPUnit_Framework_TestCase
         $this->normalizer->setSerializer($this->serializer);
     }
 
+    public function testInterface()
+    {
+        $this->assertInstanceOf('Symfony\Component\Serializer\Normalizer\NormalizerInterface', $this->normalizer);
+        $this->assertInstanceOf('Symfony\Component\Serializer\Normalizer\DenormalizerInterface', $this->normalizer);
+    }
+
     public function testNormalize()
     {
         $obj = new GetSetDummy();
@@ -425,6 +431,14 @@ class GetSetMethodNormalizerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($dummy, $obj);
         $this->assertEquals('foo', $obj->getFoo());
         $this->assertEquals('bar', $obj->getBar());
+    }
+
+    public function testDenormalizeNonExistingAttribute()
+    {
+        $this->assertEquals(
+            new PropertyDummy(),
+            $this->normalizer->denormalize(array('non_existing' => true), __NAMESPACE__.'\PropertyDummy')
+        );
     }
 }
 
