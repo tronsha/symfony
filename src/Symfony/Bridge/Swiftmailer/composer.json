@@ -20,15 +20,14 @@
         "swiftmailer/swiftmailer": ">=4.2.0,<6.0-dev"
     },
     "require-dev": {
-        "symfony/phpunit-bridge": "~2.7|~3.0.0"
+        "symfony/phpunit-bridge": "~2.7"
     },
     "suggest": {
         "symfony/http-kernel": ""
     },
     "autoload": {
-        "psr-0": { "Symfony\\Bridge\\Swiftmailer\\": "" }
+        "psr-4": { "Symfony\\Bridge\\Swiftmailer\\": "" }
     },
-    "target-dir": "Symfony/Bridge/Swiftmailer",
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {

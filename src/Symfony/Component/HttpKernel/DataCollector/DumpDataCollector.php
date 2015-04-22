@@ -84,7 +84,7 @@ class DumpDataCollector extends DataCollector implements DataDumperInterface
                 $line = $trace[$i]['line'];
 
                 while (++$i < 7) {
-                    if (isset($trace[$i]['function']) && empty($trace[$i]['class']) && 'call_user_func' !== $trace[$i]['function']) {
+                    if (isset($trace[$i]['function'], $trace[$i]['file']) && empty($trace[$i]['class']) && 0 !== strpos($trace[$i]['function'], 'call_user_func')) {
                         $file = $trace[$i]['file'];
                         $line = $trace[$i]['line'];
 
@@ -168,7 +168,12 @@ class DumpDataCollector extends DataCollector implements DataDumperInterface
         $dumps = array();
 
         foreach ($this->data as $dump) {
-            $dumper->dump($dump['data']->getLimitedClone($maxDepthLimit, $maxItemsPerDepth));
+            if (method_exists($dump['data'], 'withMaxDepth')) {
+                $dumper->dump($dump['data']->withMaxDepth($maxDepthLimit)->withMaxItemsPerDepth($maxItemsPerDepth));
+            } else {
+                // getLimitedClone is @deprecated, to be removed in 3.0
+                $dumper->dump($dump['data']->getLimitedClone($maxDepthLimit, $maxItemsPerDepth));
+            }
             rewind($data);
             $dump['data'] = stream_get_contents($data);
             ftruncate($data, 0);

@@ -15,6 +15,9 @@ use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\Extension\Core\EventListener\FixRadioInputListener;
 use Symfony\Component\Form\Extension\Core\ChoiceList\SimpleChoiceList;
 
+/**
+ * @group legacy
+ */
 class FixRadioInputListenerTest extends \PHPUnit_Framework_TestCase
 {
     private $choiceList;

@@ -112,6 +112,14 @@ class Configuration implements ConfigurationInterface
                     return $v;
                 })
             ->end()
+            ->beforeNormalization()
+                ->ifTrue(function ($v) { return isset($v['validation']['api']); })
+                ->then(function ($v) {
+                    trigger_error('The validation.api configuration key is deprecated since version 2.7 and will be removed in 3.0', E_USER_DEPRECATED);
+
+                    return $v;
+                })
+            ->end()
             ->children()
                 ->scalarNode('secret')->end()
                 ->scalarNode('http_method_override')
@@ -148,10 +156,7 @@ class Configuration implements ConfigurationInterface
                 ->booleanNode('test')->end()
                 ->scalarNode('default_locale')->defaultValue('en')->end()
                 ->arrayNode('trusted_hosts')
-                    ->beforeNormalization()
-                        ->ifTrue(function ($v) { return is_string($v); })
-                        ->then(function ($v) { return array($v); })
-                    ->end()
+                    ->beforeNormalization()->ifString()->then(function ($v) { return array($v); })->end()
                     ->prototype('scalar')->end()
                 ->end()
             ->end()
@@ -418,7 +423,7 @@ class Configuration implements ConfigurationInterface
                                     ->addDefaultChildrenIfNoneSet()
                                     ->prototype('scalar')->defaultValue('FrameworkBundle:Form')->end()
                                     ->validate()
-                                        ->ifTrue(function ($v) {return !in_array('FrameworkBundle:Form', $v); })
+                                        ->ifNotInArray(array('FrameworkBundle:Form'))
                                         ->then(function ($v) {
                                             return array_merge(array('FrameworkBundle:Form'), $v);
                                         })
@@ -610,6 +615,7 @@ class Configuration implements ConfigurationInterface
                         ->scalarNode('translation_domain')->defaultValue('validators')->end()
                         ->booleanNode('strict_email')->defaultFalse()->end()
                         ->enumNode('api')
+                            ->info('Deprecated since version 2.7, to be removed in 3.0')
                             ->values(array('2.4', '2.5', '2.5-bc', 'auto'))
                             ->beforeNormalization()
                                 // XML/YAML parse as numbers, not as strings
@@ -619,19 +625,6 @@ class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
-            ->end()
-            ->validate()
-                ->ifTrue(function ($v) { return !isset($v['validation']['api']) || 'auto' === $v['validation']['api']; })
-                ->then(function ($v) {
-                    // This condition is duplicated in ValidatorBuilder. This
-                    // duplication is necessary in order to know the desired
-                    // API version already during container configuration
-                    // (to adjust service classes etc.)
-                    // See https://github.com/symfony/symfony/issues/11580
-                    $v['validation']['api'] = '2.5-bc';
-
-                    return $v;
-                })
             ->end()
         ;
     }
@@ -660,6 +653,10 @@ class Configuration implements ConfigurationInterface
                 ->arrayNode('serializer')
                     ->info('serializer configuration')
                     ->canBeEnabled()
+                    ->children()
+                        ->booleanNode('enable_annotations')->defaultFalse()->end()
+                        ->scalarNode('cache')->end()
+                    ->end()
                 ->end()
             ->end()
         ;

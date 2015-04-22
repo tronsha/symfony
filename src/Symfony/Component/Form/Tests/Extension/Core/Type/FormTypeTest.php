@@ -637,10 +637,11 @@ class FormTypeTest extends BaseTypeTest
         $this->assertSame('0', $view->vars['label']);
     }
 
-    public function testLegacyCanGetErrorsWhenButtonInForm()
+    /**
+     * @group legacy
+     */
+    public function testCanGetErrorsWhenButtonInForm()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $builder = $this->factory->createBuilder('form', null, array(
             'data_class' => 'Symfony\Component\Form\Tests\Fixtures\Author',
             'required' => false,

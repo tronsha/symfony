@@ -80,7 +80,7 @@ class LintCommandTest extends \PHPUnit_Framework_TestCase
 
         $application = new Application();
         $application->add($command);
-        $command = $application->find('twig:lint');
+        $command = $application->find('lint:twig');
 
         return new CommandTester($command);
     }
@@ -98,12 +98,12 @@ class LintCommandTest extends \PHPUnit_Framework_TestCase
         return $filename;
     }
 
-    public function setUp()
+    protected function setUp()
     {
         $this->files = array();
     }
 
-    public function tearDown()
+    protected function tearDown()
     {
         foreach ($this->files as $file) {
             if (file_exists($file)) {

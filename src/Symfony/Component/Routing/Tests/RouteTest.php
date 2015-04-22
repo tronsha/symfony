@@ -164,6 +164,9 @@ class RouteTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($route->hasScheme('httpS'));
     }
 
+    /**
+     * @group legacy
+     */
     public function testLegacySchemeRequirement()
     {
         $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
@@ -191,6 +194,9 @@ class RouteTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(array('GET', 'POST'), $route->getMethods(), '->setMethods() accepts an array of methods and uppercases them');
     }
 
+    /**
+     * @group legacy
+     */
     public function testLegacyMethodRequirement()
     {
         $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
@@ -222,6 +228,9 @@ class RouteTest extends \PHPUnit_Framework_TestCase
         $this->assertNotSame($compiled, $route->compile(), '->compile() recompiles if the route was modified');
     }
 
+    /**
+     * @group legacy
+     */
     public function testLegacyPattern()
     {
         $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
