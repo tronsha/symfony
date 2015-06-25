@@ -594,7 +594,7 @@ class Request
     public static function setTrustedHosts(array $hostPatterns)
     {
         self::$trustedHostPatterns = array_map(function ($hostPattern) {
-            return sprintf('{%s}i', str_replace('}', '\\}', $hostPattern));
+            return sprintf('#%s#i', $hostPattern);
         }, $hostPatterns);
         // we need to reset trusted hosts on trusted host patterns change
         self::$trustedHosts = array();
@@ -1557,8 +1557,8 @@ class Request
      */
     public function getContent($asResource = false)
     {
-        if (false === $this->content || (true === $asResource && null !== $this->content)) {
-            throw new \LogicException('getContent() can only be called once when using the resource return type.');
+        if (PHP_VERSION_ID < 50600 && (false === $this->content || (true === $asResource && null !== $this->content))) {
+            throw new \LogicException('getContent() can only be called once when using the resource return type and PHP below 5.6.');
         }
 
         if (true === $asResource) {
@@ -1655,7 +1655,7 @@ class Request
                         $lang = $codes[1];
                     }
                 } else {
-                    for ($i = 0, $max = count($codes); $i < $max; $i++) {
+                    for ($i = 0, $max = count($codes); $i < $max; ++$i) {
                         if ($i === 0) {
                             $lang = strtolower($codes[0]);
                         } else {
@@ -1824,7 +1824,7 @@ class Request
             return $prefix;
         }
 
-        if ($baseUrl && false !== $prefix = $this->getUrlencodedPrefix($requestUri, dirname($baseUrl).'/')) {
+        if ($baseUrl && false !== $prefix = $this->getUrlencodedPrefix($requestUri, rtrim(dirname($baseUrl), '/').'/')) {
             // directory portion of $baseUrl matches
             return rtrim($prefix, '/');
         }
