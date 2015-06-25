@@ -39,31 +39,21 @@ $container->loadFromExtension('framework', array(
         'save_path' => '/path/to/sessions',
     ),
     'templating' => array(
-        'assets_version' => 'SomeVersionScheme',
-        'assets_base_urls' => 'http://cdn.example.com',
         'cache' => '/path/to/cache',
         'engines' => array('php', 'twig'),
         'loader' => array('loader.foo', 'loader.bar'),
-        'packages' => array(
-            'images' => array(
-                'version' => '1.0.0',
-                'base_urls' => array('http://images1.example.com', 'http://images2.example.com'),
-            ),
-            'foo' => array(
-                'version' => '1.0.0',
-            ),
-            'bar' => array(
-                'base_urls' => array('http://bar1.example.com', 'http://bar2.example.com'),
-            ),
-        ),
         'form' => array(
             'resources' => array('theme1', 'theme2'),
         ),
         'hinclude_default_template' => 'global_hinclude_template',
     ),
+    'assets' => array(
+        'version' => 'v1',
+    ),
     'translator' => array(
         'enabled' => true,
         'fallback' => 'fr',
+        'paths' => array('%kernel.root_dir%/Fixtures/translations'),
     ),
     'validation' => array(
         'enabled' => true,
@@ -74,6 +64,7 @@ $container->loadFromExtension('framework', array(
         'debug' => true,
         'file_cache_dir' => '%kernel.cache_dir%/annotations',
     ),
+    'serializer' => array('enabled' => true),
     'ide' => 'file%%link%%format',
     'request' => array(
         'formats' => array(

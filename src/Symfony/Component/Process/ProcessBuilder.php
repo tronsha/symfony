@@ -68,7 +68,7 @@ class ProcessBuilder
     }
 
     /**
-     * Adds an unescaped prefix to the command string.
+     * Adds a prefix to the command string.
      *
      * The prefix is preserved when resetting arguments.
      *
@@ -167,7 +167,7 @@ class ProcessBuilder
     /**
      * Sets the input of the process.
      *
-     * @param string|null $input The input as a string
+     * @param mixed $input The input as a string
      *
      * @return ProcessBuilder
      *

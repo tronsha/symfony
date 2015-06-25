@@ -49,10 +49,10 @@ class IsbnValidator extends ConstraintValidator
 
         if (null === $constraint->type) {
             if ($constraint->isbn10 && !$constraint->isbn13) {
-                trigger_error('The "isbn10" option of the Isbn constraint is deprecated since version 2.5 and will be removed in 3.0. Use the "type" option instead.', E_USER_DEPRECATED);
+                @trigger_error('The "isbn10" option of the Isbn constraint is deprecated since version 2.5 and will be removed in 3.0. Use the "type" option instead.', E_USER_DEPRECATED);
                 $constraint->type = 'isbn10';
             } elseif ($constraint->isbn13 && !$constraint->isbn10) {
-                trigger_error('The "isbn13" option of the Isbn constraint is deprecated since version 2.5 and will be removed in 3.0. Use the "type" option instead.', E_USER_DEPRECATED);
+                @trigger_error('The "isbn13" option of the Isbn constraint is deprecated since version 2.5 and will be removed in 3.0. Use the "type" option instead.', E_USER_DEPRECATED);
                 $constraint->type = 'isbn13';
             }
         }
@@ -156,7 +156,7 @@ class IsbnValidator extends ConstraintValidator
                 return Isbn::INVALID_CHARACTERS_ERROR;
             }
 
-            $checkSum += $digit * intval(10 - $i);
+            $checkSum += $digit * (10 - $i);
         }
 
         if (isset($isbn{$i})) {

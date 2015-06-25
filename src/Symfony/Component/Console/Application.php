@@ -11,8 +11,6 @@
 
 namespace Symfony\Component\Console;
 
-use Symfony\Component\Console\Descriptor\TextDescriptor;
-use Symfony\Component\Console\Descriptor\XmlDescriptor;
 use Symfony\Component\Console\Helper\DebugFormatterHelper;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Helper\QuestionHelper;
@@ -23,7 +21,6 @@ use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputAwareInterface;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
@@ -485,7 +482,7 @@ class Application
         if (empty($namespaces)) {
             $message = sprintf('There are no commands defined in the "%s" namespace.', $namespace);
 
-            if ($alternatives = $this->findAlternatives($namespace, $allNamespaces, array())) {
+            if ($alternatives = $this->findAlternatives($namespace, $allNamespaces)) {
                 if (1 == count($alternatives)) {
                     $message .= "\n\nDid you mean this?\n    ";
                 } else {
@@ -534,7 +531,7 @@ class Application
 
             $message = sprintf('Command "%s" is not defined.', $name);
 
-            if ($alternatives = $this->findAlternatives($name, $allCommands, array())) {
+            if ($alternatives = $this->findAlternatives($name, $allCommands)) {
                 if (1 == count($alternatives)) {
                     $message .= "\n\nDid you mean this?\n    ";
                 } else {
@@ -614,59 +611,12 @@ class Application
     }
 
     /**
-     * Returns a text representation of the Application.
-     *
-     * @param string $namespace An optional namespace name
-     * @param bool   $raw       Whether to return raw command list
-     *
-     * @return string A string representing the Application
-     *
-     * @deprecated since version 2.3, to be removed in 3.0.
-     */
-    public function asText($namespace = null, $raw = false)
-    {
-        trigger_error('The '.__METHOD__.' method is deprecated since version 2.3 and will be removed in 3.0.', E_USER_DEPRECATED);
-
-        $descriptor = new TextDescriptor();
-        $output = new BufferedOutput(BufferedOutput::VERBOSITY_NORMAL, !$raw);
-        $descriptor->describe($output, $this, array('namespace' => $namespace, 'raw_output' => true));
-
-        return $output->fetch();
-    }
-
-    /**
-     * Returns an XML representation of the Application.
-     *
-     * @param string $namespace An optional namespace name
-     * @param bool   $asDom     Whether to return a DOM or an XML string
-     *
-     * @return string|\DOMDocument An XML string representing the Application
-     *
-     * @deprecated since version 2.3, to be removed in 3.0.
-     */
-    public function asXml($namespace = null, $asDom = false)
-    {
-        trigger_error('The '.__METHOD__.' method is deprecated since version 2.3 and will be removed in 3.0.', E_USER_DEPRECATED);
-
-        $descriptor = new XmlDescriptor();
-
-        if ($asDom) {
-            return $descriptor->getApplicationDocument($this, $namespace);
-        }
-
-        $output = new BufferedOutput();
-        $descriptor->describe($output, $this, array('namespace' => $namespace));
-
-        return $output->fetch();
-    }
-
-    /**
      * Renders a caught exception.
      *
      * @param \Exception      $e      An exception instance
      * @param OutputInterface $output An OutputInterface instance
      */
-    public function renderException($e, $output)
+    public function renderException(\Exception $e, OutputInterface $output)
     {
         do {
             $title = sprintf('  [%s]  ', get_class($e));
@@ -714,7 +664,7 @@ class Application
                     'args' => array(),
                 ));
 
-                for ($i = 0, $count = count($trace); $i < $count; $i++) {
+                for ($i = 0, $count = count($trace); $i < $count; ++$i) {
                     $class = isset($trace[$i]['class']) ? $trace[$i]['class'] : '';
                     $type = isset($trace[$i]['type']) ? $trace[$i]['type'] : '';
                     $function = $trace[$i]['function'];
@@ -724,15 +674,15 @@ class Application
                     $output->writeln(sprintf(' %s%s%s() at <info>%s:%s</info>', $class, $type, $function, $file, $line));
                 }
 
-                $output->writeln("");
-                $output->writeln("");
+                $output->writeln('');
+                $output->writeln('');
             }
         } while ($e = $e->getPrevious());
 
         if (null !== $this->runningCommand) {
             $output->writeln(sprintf('<info>%s</info>', sprintf($this->runningCommand->getSynopsis(), $this->getName())));
-            $output->writeln("");
-            $output->writeln("");
+            $output->writeln('');
+            $output->writeln('');
         }
     }
 
@@ -831,7 +781,7 @@ class Application
             $input->setInteractive(false);
         } elseif (function_exists('posix_isatty') && $this->getHelperSet()->has('question')) {
             $inputStream = $this->getHelperSet()->get('question')->getInputStream();
-            if (!@posix_isatty($inputStream)) {
+            if (!@posix_isatty($inputStream) && false === getenv('SHELL_INTERACTIVE')) {
                 $input->setInteractive(false);
             }
         }
@@ -922,12 +872,12 @@ class Application
         return new InputDefinition(array(
             new InputArgument('command', InputArgument::REQUIRED, 'The command to execute'),
 
-            new InputOption('--help',           '-h', InputOption::VALUE_NONE, 'Display this help message'),
-            new InputOption('--quiet',          '-q', InputOption::VALUE_NONE, 'Do not output any message'),
-            new InputOption('--verbose',        '-v|vv|vvv', InputOption::VALUE_NONE, 'Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug'),
-            new InputOption('--version',        '-V', InputOption::VALUE_NONE, 'Display this application version'),
-            new InputOption('--ansi',           '',   InputOption::VALUE_NONE, 'Force ANSI output'),
-            new InputOption('--no-ansi',        '',   InputOption::VALUE_NONE, 'Disable ANSI output'),
+            new InputOption('--help', '-h', InputOption::VALUE_NONE, 'Display this help message'),
+            new InputOption('--quiet', '-q', InputOption::VALUE_NONE, 'Do not output any message'),
+            new InputOption('--verbose', '-v|vv|vvv', InputOption::VALUE_NONE, 'Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug'),
+            new InputOption('--version', '-V', InputOption::VALUE_NONE, 'Display this application version'),
+            new InputOption('--ansi', '', InputOption::VALUE_NONE, 'Force ANSI output'),
+            new InputOption('--no-ansi', '', InputOption::VALUE_NONE, 'Disable ANSI output'),
             new InputOption('--no-interaction', '-n', InputOption::VALUE_NONE, 'Do not ask any interactive question'),
         ));
     }
@@ -1080,7 +1030,7 @@ class Application
             }
         }
 
-        $alternatives = array_filter($alternatives, function ($lev) use ($threshold) { return $lev < 2*$threshold; });
+        $alternatives = array_filter($alternatives, function ($lev) use ($threshold) { return $lev < 2 * $threshold; });
         asort($alternatives);
 
         return array_keys($alternatives);
@@ -1136,7 +1086,7 @@ class Application
             $lines[] = str_pad($line, $width);
             $line = $char;
         }
-        if (strlen($line)) {
+        if ('' !== $line) {
             $lines[] = count($lines) ? str_pad($line, $width) : $line;
         }
 

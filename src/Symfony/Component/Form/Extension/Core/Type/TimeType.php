@@ -48,7 +48,7 @@ class TimeType extends AbstractType
         }
 
         if ('single_text' === $options['widget']) {
-            $builder->addViewTransformer(new DateTimeToStringTransformer(null, null, $format));
+            $builder->addViewTransformer(new DateTimeToStringTransformer($options['model_timezone'], $options['view_timezone'], $format));
         } else {
             $hourOptions = $minuteOptions = $secondOptions = array(
                 'error_bubbling' => true,
@@ -109,20 +109,20 @@ class TimeType extends AbstractType
                 $builder->add('second', $options['widget'], $secondOptions);
             }
 
-            $builder->addViewTransformer(new DateTimeToArrayTransformer(null, null, $parts, 'text' === $options['widget']));
+            $builder->addViewTransformer(new DateTimeToArrayTransformer($options['model_timezone'], $options['view_timezone'], $parts, 'text' === $options['widget']));
         }
 
         if ('string' === $options['input']) {
             $builder->addModelTransformer(new ReversedTransformer(
-                new DateTimeToStringTransformer(null, null, 'H:i:s')
+                new DateTimeToStringTransformer($options['model_timezone'], $options['model_timezone'], 'H:i:s')
             ));
         } elseif ('timestamp' === $options['input']) {
             $builder->addModelTransformer(new ReversedTransformer(
-                new DateTimeToTimestampTransformer(null, null)
+                new DateTimeToTimestampTransformer($options['model_timezone'], $options['model_timezone'])
             ));
         } elseif ('array' === $options['input']) {
             $builder->addModelTransformer(new ReversedTransformer(
-                new DateTimeToArrayTransformer(null, null, $parts)
+                new DateTimeToArrayTransformer($options['model_timezone'], $options['model_timezone'], $parts)
             ));
         }
     }
@@ -214,30 +214,24 @@ class TimeType extends AbstractType
             'compound' => $compound,
         ));
 
-        $resolver->setNormalizers(array(
-            'empty_value' => $placeholderNormalizer,
-            'placeholder' => $placeholderNormalizer,
+        $resolver->setNormalizer('empty_value', $placeholderNormalizer);
+        $resolver->setNormalizer('placeholder', $placeholderNormalizer);
+
+        $resolver->setAllowedValues('input', array(
+            'datetime',
+            'string',
+            'timestamp',
+            'array',
+        ));
+        $resolver->setAllowedValues('widget', array(
+            'single_text',
+            'text',
+            'choice',
         ));
 
-        $resolver->setAllowedValues(array(
-            'input' => array(
-                'datetime',
-                'string',
-                'timestamp',
-                'array',
-            ),
-            'widget' => array(
-                'single_text',
-                'text',
-                'choice',
-            ),
-        ));
-
-        $resolver->setAllowedTypes(array(
-            'hours' => 'array',
-            'minutes' => 'array',
-            'seconds' => 'array',
-        ));
+        $resolver->setAllowedTypes('hours', 'array');
+        $resolver->setAllowedTypes('minutes', 'array');
+        $resolver->setAllowedTypes('seconds', 'array');
     }
 
     /**

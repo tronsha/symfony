@@ -191,6 +191,13 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($builder->get('bar') === $builder->get('foo'), '->setAlias() creates a service that is an alias to another one');
 
         try {
+            $builder->setAlias('foobar', 'foobar');
+            $this->fail('->setAlias() throws an InvalidArgumentException if the alias references itself');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertEquals('An alias can not reference itself, got a circular reference on "foobar".', $e->getMessage(), '->setAlias() throws an InvalidArgumentException if the alias references itself');
+        }
+
+        try {
             $builder->getAlias('foobar');
             $this->fail('->getAlias() throws an InvalidArgumentException if the alias does not exist');
         } catch (\InvalidArgumentException $e) {
@@ -260,7 +267,8 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
         $builder->setResourceTracking(false);
         $builderCompilerPasses = $builder->getCompiler()->getPassConfig()->getPasses();
         $builder->addCompilerPass($this->getMock('Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface'));
-        $this->assertEquals(sizeof($builderCompilerPasses) + 1, sizeof($builder->getCompiler()->getPassConfig()->getPasses()));
+
+        $this->assertCount(count($builder->getCompiler()->getPassConfig()->getPasses()) - 1, $builderCompilerPasses);
     }
 
     /**
@@ -361,9 +369,12 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
         $builder->register('foo3', 'Bar\FooClass')->setConfigurator(array(new Reference('baz'), 'configure'));
         $this->assertTrue($builder->get('foo3')->configured, '->createService() calls the configurator');
 
-        $builder->register('foo4', 'Bar\FooClass')->setConfigurator('foo');
+        $builder->register('foo4', 'Bar\FooClass')->setConfigurator(array($builder->getDefinition('baz'), 'configure'));
+        $this->assertTrue($builder->get('foo4')->configured, '->createService() calls the configurator');
+
+        $builder->register('foo5', 'Bar\FooClass')->setConfigurator('foo');
         try {
-            $builder->get('foo4');
+            $builder->get('foo5');
             $this->fail('->createService() throws an InvalidArgumentException if the configure callable is not a valid callable');
         } catch (\InvalidArgumentException $e) {
             $this->assertEquals('The configure callable for class "Bar\FooClass" is not a callable.', $e->getMessage(), '->createService() throws an InvalidArgumentException if the configure callable is not a valid callable');
@@ -681,56 +692,6 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
         $container->compile();
         $container->set('a', $a = new \stdClass());
         $this->assertEquals($a, $container->get('a'));
-    }
-
-    public function testLegacySetOnSynchronizedService()
-    {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
-        $container = new ContainerBuilder();
-        $container->register('baz', 'BazClass')
-            ->setSynchronized(true)
-        ;
-        $container->register('bar', 'BarClass')
-            ->addMethodCall('setBaz', array(new Reference('baz')))
-        ;
-
-        $container->set('baz', $baz = new \BazClass());
-        $this->assertSame($baz, $container->get('bar')->getBaz());
-
-        $container->set('baz', $baz = new \BazClass());
-        $this->assertSame($baz, $container->get('bar')->getBaz());
-    }
-
-    public function testLegacySynchronizedServiceWithScopes()
-    {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
-        $container = new ContainerBuilder();
-        $container->addScope(new Scope('foo'));
-        $container->register('baz', 'BazClass')
-            ->setSynthetic(true)
-            ->setSynchronized(true)
-            ->setScope('foo')
-        ;
-        $container->register('bar', 'BarClass')
-            ->addMethodCall('setBaz', array(new Reference('baz', ContainerInterface::NULL_ON_INVALID_REFERENCE, false)))
-        ;
-        $container->compile();
-
-        $container->enterScope('foo');
-        $container->set('baz', $outerBaz = new \BazClass(), 'foo');
-        $this->assertSame($outerBaz, $container->get('bar')->getBaz());
-
-        $container->enterScope('foo');
-        $container->set('baz', $innerBaz = new \BazClass(), 'foo');
-        $this->assertSame($innerBaz, $container->get('bar')->getBaz());
-        $container->leaveScope('foo');
-
-        $this->assertNotSame($innerBaz, $container->get('bar')->getBaz());
-        $this->assertSame($outerBaz, $container->get('bar')->getBaz());
-
-        $container->leaveScope('foo');
     }
 
     /**

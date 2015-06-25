@@ -22,7 +22,7 @@ class ConfigCacheTest extends \PHPUnit_Framework_TestCase
 
     private $metaFile = null;
 
-    public function setUp()
+    protected function setUp()
     {
         $this->resourceFile = tempnam(sys_get_temp_dir(), '_resource');
         $this->cacheFile = tempnam(sys_get_temp_dir(), 'config_');
@@ -32,7 +32,7 @@ class ConfigCacheTest extends \PHPUnit_Framework_TestCase
         $this->generateMetaFile();
     }
 
-    public function tearDown()
+    protected function tearDown()
     {
         $files = array($this->cacheFile, $this->metaFile, $this->resourceFile);
 
@@ -43,11 +43,11 @@ class ConfigCacheTest extends \PHPUnit_Framework_TestCase
         }
     }
 
-    public function testToString()
+    public function testGetPath()
     {
         $cache = new ConfigCache($this->cacheFile, true);
 
-        $this->assertSame($this->cacheFile, (string) $cache);
+        $this->assertSame($this->cacheFile, $cache->getPath());
     }
 
     public function testCacheIsNotFreshIfFileDoesNotExist()
@@ -128,7 +128,7 @@ class ConfigCacheTest extends \PHPUnit_Framework_TestCase
 
     private function makeCacheStale()
     {
-        touch($this->cacheFile, time() - 3600);
+        touch($this->cacheFile, filemtime($this->resourceFile) - 3600);
     }
 
     private function generateMetaFile()

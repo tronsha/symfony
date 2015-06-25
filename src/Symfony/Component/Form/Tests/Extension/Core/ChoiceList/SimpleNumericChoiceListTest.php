@@ -13,21 +13,20 @@ namespace Symfony\Component\Form\Tests\Extension\Core\ChoiceList;
 
 use Symfony\Component\Form\Extension\Core\ChoiceList\SimpleChoiceList;
 
+/**
+ * @group legacy
+ */
 class SimpleNumericChoiceListTest extends AbstractChoiceListTest
 {
-    public function testLegacyGetIndicesForChoicesDealsWithNumericChoices()
+    public function testGetIndicesForChoicesDealsWithNumericChoices()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         // Pass choices as strings although they are integers
         $choices = array('0', '1');
         $this->assertSame(array(0, 1), $this->list->getIndicesForChoices($choices));
     }
 
-    public function testLegacyGetIndicesForValuesDealsWithNumericValues()
+    public function testGetIndicesForValuesDealsWithNumericValues()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         // Pass values as strings although they are integers
         $values = array('0', '1');
         $this->assertSame(array(0, 1), $this->list->getIndicesForValues($values));

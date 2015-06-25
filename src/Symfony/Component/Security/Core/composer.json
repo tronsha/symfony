@@ -3,7 +3,7 @@
     "type": "library",
     "description": "Symfony Security Component - Core Library",
     "keywords": [],
-    "homepage": "http://symfony.com",
+    "homepage": "https://symfony.com",
     "license": "MIT",
     "authors": [
         {
@@ -12,18 +12,19 @@
         },
         {
             "name": "Symfony Community",
-            "homepage": "http://symfony.com/contributors"
+            "homepage": "https://symfony.com/contributors"
         }
     ],
     "require": {
         "php": ">=5.5.9"
     },
     "require-dev": {
-        "symfony/event-dispatcher": "~2.7|~3.0",
-        "symfony/expression-language": "~2.7|~3.0",
-        "symfony/http-foundation": "~2.7|~3.0",
-        "symfony/translation": "~2.7|~3.0",
-        "symfony/validator": "~2.7|~3.0",
+        "symfony/phpunit-bridge": "~2.8|~3.0",
+        "symfony/event-dispatcher": "~2.8|~3.0",
+        "symfony/expression-language": "~2.8|~3.0",
+        "symfony/http-foundation": "~2.8|~3.0",
+        "symfony/translation": "~2.8|~3.0",
+        "symfony/validator": "~2.8|~3.0",
         "psr/log": "~1.0"
     },
     "suggest": {
@@ -33,9 +34,8 @@
         "symfony/expression-language": "For using the expression voter"
     },
     "autoload": {
-        "psr-0": { "Symfony\\Component\\Security\\Core\\": "" }
+        "psr-4": { "Symfony\\Component\\Security\\Core\\": "" }
     },
-    "target-dir": "Symfony/Component/Security/Core",
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {

@@ -50,13 +50,10 @@ class RouterDebugCommand extends ContainerAwareCommand
     {
         $this
             ->setName('debug:router')
-            ->setAliases(array(
-                'router:debug',
-            ))
             ->setDefinition(array(
                 new InputArgument('name', InputArgument::OPTIONAL, 'A route name'),
-                new InputOption('show-controllers', null,  InputOption::VALUE_NONE, 'Show assigned controllers in overview'),
-                new InputOption('format', null, InputOption::VALUE_REQUIRED, 'To output route(s) in other formats', 'txt'),
+                new InputOption('show-controllers', null, InputOption::VALUE_NONE, 'Show assigned controllers in overview'),
+                new InputOption('format', null, InputOption::VALUE_REQUIRED, 'The output format (txt, xml, json, or md)', 'txt'),
                 new InputOption('raw', null, InputOption::VALUE_NONE, 'To output raw route(s)'),
             ))
             ->setDescription('Displays current routes for an application')
@@ -77,10 +74,6 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        if (false !== strpos($input->getFirstArgument(), ':d')) {
-            $output->writeln('<comment>The use of "router:debug" command is deprecated since version 2.7 and will be removed in 3.0. Use the "debug:router" instead.</comment>');
-        }
-
         $name = $input->getArgument('name');
         $helper = new DescriptorHelper();
 

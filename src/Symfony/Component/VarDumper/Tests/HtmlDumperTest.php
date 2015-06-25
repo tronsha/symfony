@@ -39,7 +39,6 @@ class HtmlDumperTest extends \PHPUnit_Framework_TestCase
         ob_start();
         $dumper->dump($data);
         $out = ob_get_clean();
-        $closureLabel = 'public method';
         $out = preg_replace('/[ \t]+$/m', '', $out);
         $var['file'] = htmlspecialchars($var['file'], ENT_QUOTES, 'UTF-8');
         $intMax = PHP_INT_MAX;
@@ -60,10 +59,10 @@ class HtmlDumperTest extends \PHPUnit_Framework_TestCase
   <span class=sf-dump-key>4</span> => <span class=sf-dump-num>INF</span>
   <span class=sf-dump-key>5</span> => <span class=sf-dump-num>-INF</span>
   <span class=sf-dump-key>6</span> => <span class=sf-dump-num>{$intMax}</span>
-  "<span class=sf-dump-key>str</span>" => "<span class=sf-dump-str title="4 characters">d&#233;j&#224;</span>"
-  <span class=sf-dump-key>7</span> => b"<span class=sf-dump-str title="2 binary or non-UTF-8 characters">&#233;<span class=sf-dump-cchr title=\\x00>&#9216;</span></span>"
+  "<span class=sf-dump-key>str</span>" => "<span class=sf-dump-str title="5 characters">d&#233;j&#224;</span>\\n"
+  <span class=sf-dump-key>7</span> => b"<span class=sf-dump-str title="2 binary or non-UTF-8 characters">&#233;</span>\\x00"
   "<span class=sf-dump-key>[]</span>" => []
-  "<span class=sf-dump-key>res</span>" => <abbr title="`stream` resource" class=sf-dump-note>:stream</abbr> {<a class=sf-dump-ref>@{$res1}</a><samp>
+  "<span class=sf-dump-key>res</span>" => <span class=sf-dump-note>stream resource</span> <a class=sf-dump-ref>@{$res1}</a><samp>
     <span class=sf-dump-meta>wrapper_type</span>: "<span class=sf-dump-str title="9 characters">plainfile</span>"
     <span class=sf-dump-meta>stream_type</span>: "<span class=sf-dump-str title="5 characters">STDIO</span>"
     <span class=sf-dump-meta>mode</span>: "<span class=sf-dump-str>r</span>"
@@ -74,22 +73,23 @@ class HtmlDumperTest extends \PHPUnit_Framework_TestCase
     <span class=sf-dump-meta>eof</span>: <span class=sf-dump-const>false</span>
     <span class=sf-dump-meta>options</span>: []
   </samp>}
-  <span class=sf-dump-key>8</span> => <abbr title="`Unknown` resource" class=sf-dump-note>:Unknown</abbr> {<a class=sf-dump-ref>@{$res2}</a>}
+  <span class=sf-dump-key>8</span> => <span class=sf-dump-note>Unknown resource</span> <a class=sf-dump-ref>@{$res2}</a>
   "<span class=sf-dump-key>obj</span>" => <abbr title="Symfony\Component\VarDumper\Tests\Fixture\DumbFoo" class=sf-dump-note>DumbFoo</abbr> {<a class=sf-dump-ref href=#{$dumpId}-ref2%d title="2 occurrences">#%d</a><samp id={$dumpId}-ref2%d>
     +<span class=sf-dump-public title="Public property">foo</span>: "<span class=sf-dump-str title="3 characters">foo</span>"
     +"<span class=sf-dump-public title="Runtime added dynamic property">bar</span>": "<span class=sf-dump-str title="3 characters">bar</span>"
   </samp>}
   "<span class=sf-dump-key>closure</span>" => <span class=sf-dump-note>Closure</span> {<a class=sf-dump-ref>#%d</a><samp>
-    <span class=sf-dump-meta>reflection</span>: """
-      <span class=sf-dump-str title="%d characters">Closure [ &lt;user&gt; {$closureLabel} Symfony\Component\VarDumper\Tests\Fixture\{closure} ] {</span>
-      <span class=sf-dump-str title="%d characters">  @@ {$var['file']} {$var['line']} - {$var['line']}</span>
-
-      <span class=sf-dump-str title="%d characters">  - Parameters [2] {</span>
-      <span class=sf-dump-str title="%d characters">    Parameter #0 [ &lt;required&gt; \$a ]</span>
-      <span class=sf-dump-str title="%d characters">    Parameter #1 [ &lt;optional&gt; PDO or NULL &amp;\$b = NULL ]</span>
-      <span class=sf-dump-str title="%d characters">  }</span>
-      <span class=sf-dump-str title="%d characters">}</span>
-      """
+    <span class=sf-dump-meta>class</span>: "<span class=sf-dump-str title="48 characters">Symfony\Component\VarDumper\Tests\HtmlDumperTest</span>"
+    <span class=sf-dump-meta>this</span>: <abbr title="Symfony\Component\VarDumper\Tests\HtmlDumperTest" class=sf-dump-note>HtmlDumperTest</abbr> {<a class=sf-dump-ref>#%d</a> &#8230;}
+    <span class=sf-dump-meta>parameters</span>: <span class=sf-dump-note>array:2</span> [<samp>
+      "<span class=sf-dump-key>\$a</span>" => []
+      "<span class=sf-dump-key>&amp;\$b</span>" => <span class=sf-dump-note>array:2</span> [<samp>
+        "<span class=sf-dump-key>typeHint</span>" => "<span class=sf-dump-str title="3 characters">PDO</span>"
+        "<span class=sf-dump-key>default</span>" => <span class=sf-dump-const>null</span>
+      </samp>]
+    </samp>]
+    <span class=sf-dump-meta>file</span>: "<span class=sf-dump-str title="%d characters">{$var['file']}</span>"
+    <span class=sf-dump-meta>line</span>: "<span class=sf-dump-str title="%d characters">{$var['line']} to {$var['line']}</span>"
   </samp>}
   "<span class=sf-dump-key>line</span>" => <span class=sf-dump-num>{$var['line']}</span>
   "<span class=sf-dump-key>nobj</span>" => <span class=sf-dump-note>array:1</span> [<samp>

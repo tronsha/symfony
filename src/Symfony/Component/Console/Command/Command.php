@@ -11,13 +11,10 @@
 
 namespace Symfony\Component\Console\Command;
 
-use Symfony\Component\Console\Descriptor\TextDescriptor;
-use Symfony\Component\Console\Descriptor\XmlDescriptor;
 use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\HelperSet;
@@ -42,7 +39,8 @@ class Command
     private $applicationDefinitionMerged = false;
     private $applicationDefinitionMergedWithArgs = false;
     private $code;
-    private $synopsis;
+    private $synopsis = array();
+    private $usages = array();
     private $helperSet;
 
     /**
@@ -173,6 +171,10 @@ class Command
     /**
      * Interacts with the user.
      *
+     * This method is executed before the InputDefinition is validated.
+     * This means that this is the only place where the command can
+     * interactively ask for values of missing required arguments.
+     *
      * @param InputInterface  $input  An InputInterface instance
      * @param OutputInterface $output An OutputInterface instance
      */
@@ -215,7 +217,8 @@ class Command
     public function run(InputInterface $input, OutputInterface $output)
     {
         // force the creation of the synopsis before the merge with the app definition
-        $this->getSynopsis();
+        $this->getSynopsis(true);
+        $this->getSynopsis(false);
 
         // add the application arguments and options
         $this->mergeApplicationDefinition();
@@ -276,6 +279,13 @@ class Command
     {
         if (!is_callable($code)) {
             throw new \InvalidArgumentException('Invalid callable provided to Command::setCode.');
+        }
+
+        if (PHP_VERSION_ID >= 50400 && $code instanceof \Closure) {
+            $r = new \ReflectionFunction($code);
+            if (null === $r->getClosureThis()) {
+                $code = \Closure::bind($code, $this);
+            }
         }
 
         $this->code = $code;
@@ -345,7 +355,7 @@ class Command
     }
 
     /**
-     * Gets the InputDefinition to be used to create XML and Text representations of this Command.
+     * Gets the InputDefinition to be used to create representations of this Command.
      *
      * Can be overridden to provide the original command representation when it would otherwise
      * be changed by merging with the application InputDefinition.
@@ -573,15 +583,45 @@ class Command
     /**
      * Returns the synopsis for the command.
      *
+     * @param bool $short Whether to show the short version of the synopsis (with options folded) or not
+     *
      * @return string The synopsis
      */
-    public function getSynopsis()
+    public function getSynopsis($short = false)
     {
-        if (null === $this->synopsis) {
-            $this->synopsis = trim(sprintf('%s %s', $this->name, $this->definition->getSynopsis()));
+        $key = $short ? 'short' : 'long';
+
+        if (!isset($this->synopsis[$key])) {
+            $this->synopsis[$key] = trim(sprintf('%s %s', $this->name, $this->definition->getSynopsis($short)));
         }
 
-        return $this->synopsis;
+        return $this->synopsis[$key];
+    }
+
+    /**
+     * Add a command usage example.
+     *
+     * @param string $usage The usage, it'll be prefixed with the command name
+     */
+    public function addUsage($usage)
+    {
+        if (0 !== strpos($usage, $this->name)) {
+            $usage = sprintf('%s %s', $this->name, $usage);
+        }
+
+        $this->usages[] = $usage;
+
+        return $this;
+    }
+
+    /**
+     * Returns alternative usages of the command.
+     *
+     * @return array
+     */
+    public function getUsages()
+    {
+        return $this->usages;
     }
 
     /**
@@ -598,49 +638,6 @@ class Command
     public function getHelper($name)
     {
         return $this->helperSet->get($name);
-    }
-
-    /**
-     * Returns a text representation of the command.
-     *
-     * @return string A string representing the command
-     *
-     * @deprecated since version 2.3, to be removed in 3.0.
-     */
-    public function asText()
-    {
-        trigger_error('The '.__METHOD__.' method is deprecated since version 2.3 and will be removed in 3.0.', E_USER_DEPRECATED);
-
-        $descriptor = new TextDescriptor();
-        $output = new BufferedOutput(BufferedOutput::VERBOSITY_NORMAL, true);
-        $descriptor->describe($output, $this, array('raw_output' => true));
-
-        return $output->fetch();
-    }
-
-    /**
-     * Returns an XML representation of the command.
-     *
-     * @param bool $asDom Whether to return a DOM or an XML string
-     *
-     * @return string|\DOMDocument An XML string representing the command
-     *
-     * @deprecated since version 2.3, to be removed in 3.0.
-     */
-    public function asXml($asDom = false)
-    {
-        trigger_error('The '.__METHOD__.' method is deprecated since version 2.3 and will be removed in 3.0.', E_USER_DEPRECATED);
-
-        $descriptor = new XmlDescriptor();
-
-        if ($asDom) {
-            return $descriptor->getCommandDocument($this);
-        }
-
-        $output = new BufferedOutput();
-        $descriptor->describe($output, $this);
-
-        return $output->fetch();
     }
 
     /**

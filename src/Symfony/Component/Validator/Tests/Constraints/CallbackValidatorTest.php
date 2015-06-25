@@ -186,6 +186,9 @@ class CallbackValidatorTest extends AbstractConstraintValidatorTest
     }
 
     // BC with Symfony < 2.4
+    /**
+     * @group legacy
+     */
     public function testLegacySingleMethodBc()
     {
         $object = new CallbackValidatorTest_Object();
@@ -199,6 +202,9 @@ class CallbackValidatorTest extends AbstractConstraintValidatorTest
     }
 
     // BC with Symfony < 2.4
+    /**
+     * @group legacy
+     */
     public function testLegacySingleMethodBcExplicitName()
     {
         $object = new CallbackValidatorTest_Object();
@@ -212,6 +218,9 @@ class CallbackValidatorTest extends AbstractConstraintValidatorTest
     }
 
     // BC with Symfony < 2.4
+    /**
+     * @group legacy
+     */
     public function testLegacyMultipleMethodsBc()
     {
         $object = new CallbackValidatorTest_Object();
@@ -227,6 +236,9 @@ class CallbackValidatorTest extends AbstractConstraintValidatorTest
     }
 
     // BC with Symfony < 2.4
+    /**
+     * @group legacy
+     */
     public function testLegacyMultipleMethodsBcExplicitName()
     {
         $object = new CallbackValidatorTest_Object();
@@ -244,6 +256,9 @@ class CallbackValidatorTest extends AbstractConstraintValidatorTest
     }
 
     // BC with Symfony < 2.4
+    /**
+     * @group legacy
+     */
     public function testLegacySingleStaticMethodBc()
     {
         $object = new CallbackValidatorTest_Object();
@@ -259,6 +274,9 @@ class CallbackValidatorTest extends AbstractConstraintValidatorTest
     }
 
     // BC with Symfony < 2.4
+    /**
+     * @group legacy
+     */
     public function testLegacySingleStaticMethodBcExplicitName()
     {
         $object = new CallbackValidatorTest_Object();
@@ -295,6 +313,7 @@ class CallbackValidatorTest extends AbstractConstraintValidatorTest
 
     /**
      * @expectedException \Symfony\Component\Validator\Exception\ConstraintDefinitionException
+     * @group legacy
      */
     public function testLegacyExpectEitherCallbackOrMethods()
     {

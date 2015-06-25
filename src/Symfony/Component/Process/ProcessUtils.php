@@ -48,8 +48,8 @@ class ProcessUtils
             }
 
             $escapedArgument = '';
-            $quote =  false;
-            foreach (preg_split('/(")/i', $argument, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE) as $part) {
+            $quote = false;
+            foreach (preg_split('/(")/', $argument, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE) as $part) {
                 if ('"' === $part) {
                     $escapedArgument .= '\\"';
                 } elseif (self::isSurroundedBy($part, '%')) {
@@ -91,10 +91,6 @@ class ProcessUtils
                 return $input;
             }
             if (is_scalar($input)) {
-                return (string) $input;
-            }
-            // deprecated as of Symfony 2.5, to be removed in 3.0
-            if (is_object($input) && method_exists($input, '__toString')) {
                 return (string) $input;
             }
 

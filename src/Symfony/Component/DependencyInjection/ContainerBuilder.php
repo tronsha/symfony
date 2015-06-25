@@ -411,10 +411,6 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
         unset($this->definitions[$id], $this->aliasDefinitions[$id]);
 
         parent::set($id, $service, $scope);
-
-        if (isset($this->obsoleteDefinitions[$id]) && $this->obsoleteDefinitions[$id]->isSynchronized(false)) {
-            $this->synchronize($id);
-        }
     }
 
     /**
@@ -470,7 +466,7 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
             return $service;
         }
 
-        if (!$this->hasDefinition($id) && isset($this->aliasDefinitions[$id])) {
+        if (!array_key_exists($id, $this->definitions) && isset($this->aliasDefinitions[$id])) {
             return $this->get($this->aliasDefinitions[$id]);
         }
 
@@ -684,7 +680,7 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
             throw new InvalidArgumentException('$id must be a string, or an Alias object.');
         }
 
-        if ($alias === strtolower($id)) {
+        if ($alias === (string) $id) {
             throw new InvalidArgumentException(sprintf('An alias can not reference itself, got a circular reference on "%s".', $alias));
         }
 
@@ -746,7 +742,7 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
     {
         $id = strtolower($id);
 
-        if (!$this->hasAlias($id)) {
+        if (!isset($this->aliasDefinitions[$id])) {
             throw new InvalidArgumentException(sprintf('The service alias "%s" does not exist.', $id));
         }
 
@@ -768,7 +764,7 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
      */
     public function register($id, $class = null)
     {
-        return $this->setDefinition(strtolower($id), new Definition($class));
+        return $this->setDefinition($id, new Definition($class));
     }
 
     /**
@@ -864,7 +860,7 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
     {
         $id = strtolower($id);
 
-        if (!$this->hasDefinition($id)) {
+        if (!array_key_exists($id, $this->definitions)) {
             throw new InvalidArgumentException(sprintf('The service definition "%s" does not exist.', $id));
         }
 
@@ -886,8 +882,10 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
      */
     public function findDefinition($id)
     {
-        while ($this->hasAlias($id)) {
-            $id = (string) $this->getAlias($id);
+        $id = strtolower($id);
+
+        while (isset($this->aliasDefinitions[$id])) {
+            $id = (string) $this->aliasDefinitions[$id];
         }
 
         return $this->getDefinition($id);
@@ -944,16 +942,6 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
             }
 
             $service = call_user_func_array($factory, $arguments);
-        } elseif (null !== $definition->getFactoryMethod(false)) {
-            if (null !== $definition->getFactoryClass(false)) {
-                $factory = $parameterBag->resolveValue($definition->getFactoryClass(false));
-            } elseif (null !== $definition->getFactoryService(false)) {
-                $factory = $this->get($parameterBag->resolveValue($definition->getFactoryService(false)));
-            } else {
-                throw new RuntimeException(sprintf('Cannot create service "%s" from factory method without a factory service or factory class.', $id));
-            }
-
-            $service = call_user_func_array(array($factory, $definition->getFactoryMethod(false)), $arguments);
         } else {
             $r = new \ReflectionClass($parameterBag->resolveValue($definition->getClass()));
 
@@ -976,7 +964,13 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
 
         if ($callable = $definition->getConfigurator()) {
             if (is_array($callable)) {
-                $callable[0] = $callable[0] instanceof Reference ? $this->get((string) $callable[0]) : $parameterBag->resolveValue($callable[0]);
+                $callable[0] = $parameterBag->resolveValue($callable[0]);
+
+                if ($callable[0] instanceof Reference) {
+                    $callable[0] = $this->get((string) $callable[0], $callable[0]->getInvalidBehavior());
+                } elseif ($callable[0] instanceof Definition) {
+                    $callable[0] = $this->createService($callable[0], null);
+                }
             }
 
             if (!is_callable($callable)) {
@@ -1000,9 +994,7 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
     public function resolveServices($value)
     {
         if (is_array($value)) {
-            foreach ($value as &$v) {
-                $v = $this->resolveServices($v);
-            }
+            $value = array_map(array($this, 'resolveServices'), $value);
         } elseif ($value instanceof Reference) {
             $value = $this->get((string) $value, $value->getInvalidBehavior());
         } elseif ($value instanceof Definition) {
@@ -1108,38 +1100,6 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
         }
 
         return $this->proxyInstantiator;
-    }
-
-    /**
-     * Synchronizes a service change.
-     *
-     * This method updates all services that depend on the given
-     * service by calling all methods referencing it.
-     *
-     * @param string $id A service id
-     *
-     * @deprecated since version 2.7, will be removed in 3.0.
-     */
-    private function synchronize($id)
-    {
-        if ('request' !== $id) {
-            trigger_error('The '.__METHOD__.' method is deprecated in version 2.7 and will be removed in version 3.0.', E_USER_DEPRECATED);
-        }
-
-        foreach ($this->definitions as $definitionId => $definition) {
-            // only check initialized services
-            if (!$this->initialized($definitionId)) {
-                continue;
-            }
-
-            foreach ($definition->getMethodCalls() as $call) {
-                foreach ($call[1] as $argument) {
-                    if ($argument instanceof Reference && $id == (string) $argument) {
-                        $this->callMethod($this->get($definitionId), $call);
-                    }
-                }
-            }
-        }
     }
 
     private function callMethod($service, $call)

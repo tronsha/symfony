@@ -29,7 +29,7 @@ class YamlLintCommand extends Command
     protected function configure()
     {
         $this
-            ->setName('yaml:lint')
+            ->setName('lint:yaml')
             ->setDescription('Lints a file and outputs encountered errors')
             ->addArgument('filename', null, 'A file or a directory or STDIN')
             ->addOption('format', null, InputOption::VALUE_REQUIRED, 'The output format', 'txt')
@@ -152,7 +152,7 @@ EOF
             }
         });
 
-        $output->writeln(json_encode($filesInfo, JSON_PRETTY_PRINT));
+        $output->writeln(json_encode($filesInfo, defined('JSON_PRETTY_PRINT') ? JSON_PRETTY_PRINT : 0));
 
         return min($errors, 1);
     }

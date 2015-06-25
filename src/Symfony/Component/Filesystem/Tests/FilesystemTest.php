@@ -19,11 +19,11 @@ use Symfony\Component\Filesystem\Filesystem;
 class FilesystemTest extends FilesystemTestCase
 {
     /**
-     * @var \Symfony\Component\Filesystem\Filesystem $filesystem
+     * @var \Symfony\Component\Filesystem\Filesystem
      */
     private $filesystem = null;
 
-    public function setUp()
+    protected function setUp()
     {
         parent::setUp();
         $this->filesystem = new Filesystem();
@@ -673,7 +673,7 @@ class FilesystemTest extends FilesystemTestCase
      */
     public function testRenameThrowsExceptionOnError()
     {
-        $file = $this->workspace.DIRECTORY_SEPARATOR.uniqid();
+        $file = $this->workspace.DIRECTORY_SEPARATOR.uniqid('fs_test_', true);
         $newPath = $this->workspace.DIRECTORY_SEPARATOR.'new_file';
 
         $this->filesystem->rename($file, $newPath);
@@ -959,23 +959,7 @@ class FilesystemTest extends FilesystemTestCase
     {
         $filename = $this->workspace.DIRECTORY_SEPARATOR.'foo'.DIRECTORY_SEPARATOR.'baz.txt';
 
-        $this->filesystem->dumpFile($filename, 'bar', 0753);
-
-        $this->assertFileExists($filename);
-        $this->assertSame('bar', file_get_contents($filename));
-
-        // skip mode check on Windows
-        if ('\\' !== DIRECTORY_SEPARATOR) {
-            $this->assertFilePermissions(753, $filename);
-        }
-    }
-
-    public function testDumpFileWithNullMode()
-    {
-        $filename = $this->workspace.DIRECTORY_SEPARATOR.'foo'.DIRECTORY_SEPARATOR.'baz.txt';
-
-        $this->filesystem->dumpFile($filename, 'bar', null);
-
+        $this->filesystem->dumpFile($filename, 'bar');
         $this->assertFileExists($filename);
         $this->assertSame('bar', file_get_contents($filename));
 

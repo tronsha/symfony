@@ -3,7 +3,7 @@
     "type": "library",
     "description": "Symfony Security Component",
     "keywords": [],
-    "homepage": "http://symfony.com",
+    "homepage": "https://symfony.com",
     "license": "MIT",
     "authors": [
         {
@@ -12,14 +12,14 @@
         },
         {
             "name": "Symfony Community",
-            "homepage": "http://symfony.com/contributors"
+            "homepage": "https://symfony.com/contributors"
         }
     ],
     "require": {
         "php": ">=5.5.9",
-        "symfony/event-dispatcher": "~2.7|~3.0",
-        "symfony/http-foundation": "~2.7|~3.0",
-        "symfony/http-kernel": "~2.7|~3.0"
+        "symfony/event-dispatcher": "~2.8|~3.0",
+        "symfony/http-foundation": "~2.8|~3.0",
+        "symfony/http-kernel": "~2.8|~3.0"
     },
     "replace": {
         "symfony/security-acl": "self.version",
@@ -28,14 +28,15 @@
         "symfony/security-http": "self.version"
     },
     "require-dev": {
-        "symfony/intl": "~2.7|~3.0",
-        "symfony/routing": "~2.7|~3.0",
-        "symfony/translation": "~2.7|~3.0",
-        "symfony/validator": "~2.7|~3.0",
+        "symfony/phpunit-bridge": "~2.8|~3.0",
+        "symfony/intl": "~2.8|~3.0",
+        "symfony/routing": "~2.8|~3.0",
+        "symfony/translation": "~2.8|~3.0",
+        "symfony/validator": "~2.8|~3.0",
         "doctrine/common": "~2.2",
         "doctrine/dbal": "~2.2",
         "psr/log": "~1.0",
-        "symfony/expression-language": "~2.7|~3.0"
+        "symfony/expression-language": "~2.8|~3.0"
     },
     "suggest": {
         "symfony/class-loader": "For using the ACL generateSql script",
@@ -46,9 +47,8 @@
         "symfony/expression-language": "For using the expression voter"
     },
     "autoload": {
-        "psr-0": { "Symfony\\Component\\Security\\": "" }
+        "psr-4": { "Symfony\\Component\\Security\\": "" }
     },
-    "target-dir": "Symfony/Component/Security",
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {

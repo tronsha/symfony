@@ -14,6 +14,7 @@ namespace Symfony\Component\Serializer\Tests\Normalizer;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
 use Symfony\Component\Serializer\Mapping\Loader\AnnotationLoader;
+use Symfony\Component\Serializer\NameConverter\CamelCaseToSnakeCaseNameConverter;
 use Symfony\Component\Serializer\Normalizer\PropertyNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -62,64 +63,6 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('bar', $obj->getBar());
     }
 
-    public function testLegacyDenormalizeOnCamelCaseFormat()
-    {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
-        $this->normalizer->setCamelizedAttributes(array('camel_case'));
-        $obj = $this->normalizer->denormalize(
-            array('camel_case' => 'value'),
-            __NAMESPACE__.'\PropertyDummy'
-        );
-        $this->assertEquals('value', $obj->getCamelCase());
-    }
-
-    public function testLegacyCamelizedAttributesNormalize()
-    {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
-        $obj = new PropertyCamelizedDummy('dunglas.fr');
-        $obj->fooBar = 'les-tilleuls.coop';
-        $obj->bar_foo = 'lostinthesupermarket.fr';
-
-        $this->normalizer->setCamelizedAttributes(array('kevin_dunglas'));
-        $this->assertEquals($this->normalizer->normalize($obj), array(
-            'kevin_dunglas' => 'dunglas.fr',
-            'fooBar' => 'les-tilleuls.coop',
-            'bar_foo' => 'lostinthesupermarket.fr',
-        ));
-
-        $this->normalizer->setCamelizedAttributes(array('foo_bar'));
-        $this->assertEquals($this->normalizer->normalize($obj), array(
-            'kevinDunglas' => 'dunglas.fr',
-            'foo_bar' => 'les-tilleuls.coop',
-            'bar_foo' => 'lostinthesupermarket.fr',
-        ));
-    }
-
-    public function testLegacyCamelizedAttributesDenormalize()
-    {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
-        $obj = new PropertyCamelizedDummy('dunglas.fr');
-        $obj->fooBar = 'les-tilleuls.coop';
-        $obj->bar_foo = 'lostinthesupermarket.fr';
-
-        $this->normalizer->setCamelizedAttributes(array('kevin_dunglas'));
-        $this->assertEquals($this->normalizer->denormalize(array(
-            'kevin_dunglas' => 'dunglas.fr',
-            'fooBar' => 'les-tilleuls.coop',
-            'bar_foo' => 'lostinthesupermarket.fr',
-        ), __NAMESPACE__.'\PropertyCamelizedDummy'), $obj);
-
-        $this->normalizer->setCamelizedAttributes(array('foo_bar'));
-        $this->assertEquals($this->normalizer->denormalize(array(
-            'kevinDunglas' => 'dunglas.fr',
-            'foo_bar' => 'les-tilleuls.coop',
-            'bar_foo' => 'lostinthesupermarket.fr',
-        ), __NAMESPACE__.'\PropertyCamelizedDummy'), $obj);
-    }
-
     public function testConstructorDenormalize()
     {
         $obj = $this->normalizer->denormalize(
@@ -128,6 +71,17 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
             'any'
         );
         $this->assertEquals('foo', $obj->getFoo());
+        $this->assertEquals('bar', $obj->getBar());
+    }
+
+    public function testConstructorDenormalizeWithNullArgument()
+    {
+        $obj = $this->normalizer->denormalize(
+            array('foo' => null, 'bar' => 'bar'),
+            __NAMESPACE__.'\PropertyConstructorDummy', '
+            any'
+        );
+        $this->assertNull($obj->getFoo());
         $this->assertEquals('bar', $obj->getBar());
     }
 
@@ -228,6 +182,48 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
             array('groups' => array('a', 'b'))
         );
         $this->assertEquals($obj, $normalized);
+    }
+
+    public function testGroupsNormalizeWithNameConverter()
+    {
+        $classMetadataFactory = new ClassMetadataFactory(new AnnotationLoader(new AnnotationReader()));
+        $this->normalizer = new PropertyNormalizer($classMetadataFactory, new CamelCaseToSnakeCaseNameConverter());
+        $this->normalizer->setSerializer($this->serializer);
+
+        $obj = new GroupDummy();
+        $obj->setFooBar('@dunglas');
+        $obj->setSymfony('@coopTilleuls');
+        $obj->setCoopTilleuls('les-tilleuls.coop');
+
+        $this->assertEquals(
+            array(
+                'bar' => null,
+                'foo_bar' => '@dunglas',
+                'symfony' => '@coopTilleuls',
+            ),
+            $this->normalizer->normalize($obj, null, array('groups' => array('name_converter')))
+        );
+    }
+
+    public function testGroupsDenormalizeWithNameConverter()
+    {
+        $classMetadataFactory = new ClassMetadataFactory(new AnnotationLoader(new AnnotationReader()));
+        $this->normalizer = new PropertyNormalizer($classMetadataFactory, new CamelCaseToSnakeCaseNameConverter());
+        $this->normalizer->setSerializer($this->serializer);
+
+        $obj = new GroupDummy();
+        $obj->setFooBar('@dunglas');
+        $obj->setSymfony('@coopTilleuls');
+
+        $this->assertEquals(
+            $obj,
+            $this->normalizer->denormalize(array(
+                'bar' => null,
+                'foo_bar' => '@dunglas',
+                'symfony' => '@coopTilleuls',
+                'coop_tilleuls' => 'les-tilleuls.coop',
+            ), 'Symfony\Component\Serializer\Tests\Fixtures\GroupDummy', null, array('groups' => array('name_converter')))
+        );
     }
 
     public function provideCallbacks()
@@ -332,6 +328,35 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
 
         $expected = array('me' => 'Symfony\Component\Serializer\Tests\Fixtures\PropertyCircularReferenceDummy');
         $this->assertEquals($expected, $this->normalizer->normalize($obj));
+    }
+
+    public function testDenormalizeNonExistingAttribute()
+    {
+        $this->assertEquals(
+            new PropertyDummy(),
+            $this->normalizer->denormalize(array('non_existing' => true), __NAMESPACE__.'\PropertyDummy')
+        );
+    }
+
+    /**
+     * @expectedException \Symfony\Component\Serializer\Exception\LogicException
+     * @expectedExceptionMessage Cannot normalize attribute "bar" because injected serializer is not a normalizer
+     */
+    public function testUnableToNormalizeObjectAttribute()
+    {
+        $serializer = $this->getMock('Symfony\Component\Serializer\SerializerInterface');
+        $this->normalizer->setSerializer($serializer);
+
+        $obj = new PropertyDummy();
+        $object = new \stdClass();
+        $obj->setBar($object);
+
+        $this->normalizer->normalize($obj, 'any');
+    }
+
+    public function testNoTraversableSupport()
+    {
+        $this->assertFalse($this->normalizer->supportsNormalization(new \ArrayObject()));
     }
 }
 

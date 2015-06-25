@@ -15,13 +15,11 @@ use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\FragmentRendererPass;
 
+/**
+ * @group legacy
+ */
 class LegacyFragmentRendererPassTest extends \PHPUnit_Framework_TestCase
 {
-    public function setUp()
-    {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-    }
-
     /**
      * Tests that content rendering not implementing FragmentRendererInterface
      * trigger an exception.

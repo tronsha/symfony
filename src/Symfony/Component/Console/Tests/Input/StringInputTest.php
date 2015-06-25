@@ -41,18 +41,6 @@ class StringInputTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('bar', $input->getOption('foo'));
     }
 
-    public function testLegacyInputOptionDefinitionInConstructor()
-    {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
-        $definition = new InputDefinition(
-            array(new InputOption('foo', null, InputOption::VALUE_REQUIRED))
-        );
-
-        $input = new StringInput('--foo=bar', $definition);
-        $this->assertEquals('bar', $input->getOption('foo'));
-    }
-
     public function getTokenizeData()
     {
         return array(
@@ -78,8 +66,8 @@ class StringInputTest extends \PHPUnit_Framework_TestCase
             array('--long-option="foo bar"', array('--long-option=foo bar'), '->tokenize() parses long options with a value'),
             array('--long-option="foo bar""another"', array('--long-option=foo baranother'), '->tokenize() parses long options with a value'),
             array('--long-option=\'foo bar\'', array('--long-option=foo bar'), '->tokenize() parses long options with a value'),
-            array("--long-option='foo bar''another'", array("--long-option=foo baranother"), '->tokenize() parses long options with a value'),
-            array("--long-option='foo bar'\"another\"", array("--long-option=foo baranother"), '->tokenize() parses long options with a value'),
+            array("--long-option='foo bar''another'", array('--long-option=foo baranother'), '->tokenize() parses long options with a value'),
+            array("--long-option='foo bar'\"another\"", array('--long-option=foo baranother'), '->tokenize() parses long options with a value'),
             array('foo -a -ffoo --long bar', array('foo', '-a', '-ffoo', '--long', 'bar'), '->tokenize() parses when several arguments and options'),
         );
     }

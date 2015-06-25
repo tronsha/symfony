@@ -120,6 +120,7 @@ abstract class Controller extends ContainerAware
      * @param mixed $object     The object
      *
      * @throws \LogicException
+     *
      * @return bool
      */
     protected function isGranted($attributes, $object = null)
@@ -318,7 +319,7 @@ abstract class Controller extends ContainerAware
     }
 
     /**
-     * Gets a service by id.
+     * Gets a container service by its id.
      *
      * @param string $id The service id
      *
@@ -326,11 +327,27 @@ abstract class Controller extends ContainerAware
      */
     protected function get($id)
     {
+        if ('request' === $id) {
+            @trigger_error('The "request" service is deprecated and will be removed in 3.0. Add a typehint for Symfony\\Component\\HttpFoundation\\Request to your controller parameters to retrieve the request instead.', E_USER_DEPRECATED);
+        }
+
         return $this->container->get($id);
     }
 
     /**
-     * Checks the validity of a CSRF token
+     * Gets a container configuration parameter by its name.
+     *
+     * @param string $name The parameter name
+     *
+     * @return mixed
+     */
+    protected function getParameter($name)
+    {
+        return $this->container->getParameter($name);
+    }
+
+    /**
+     * Checks the validity of a CSRF token.
      *
      * @param string $id    The id used when generating the token
      * @param string $token The actual token sent with the request that should be validated

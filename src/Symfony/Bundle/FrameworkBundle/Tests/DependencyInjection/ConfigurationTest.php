@@ -86,6 +86,23 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
         ));
     }
 
+    public function testAssetsCanBeEnabled()
+    {
+        $processor = new Processor();
+        $configuration = new Configuration(true);
+        $config = $processor->processConfiguration($configuration, array(array('assets' => null)));
+
+        $defaultConfig = array(
+            'version' => null,
+            'version_format' => '%%s?%%s',
+            'base_path' => '',
+            'base_urls' => array(),
+            'packages' => array(),
+        );
+
+        $this->assertEquals($defaultConfig, $config['assets']);
+    }
+
     protected static function getBundleDefaultConfig()
     {
         return array(
@@ -124,6 +141,7 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
                 'enabled' => false,
                 'fallbacks' => array('en'),
                 'logging' => true,
+                'paths' => array(),
             ),
             'validation' => array(
                 'enabled' => false,
@@ -131,7 +149,6 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
                 'static_method' => array('loadValidatorMetadata'),
                 'translation_domain' => 'validators',
                 'strict_email' => false,
-                'api' => '2.5-bc',
             ),
             'annotations' => array(
                 'cache' => 'file',
@@ -140,6 +157,7 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
             ),
             'serializer' => array(
                 'enabled' => false,
+                'enable_annotations' => false,
             ),
             'property_access' => array(
                 'magic_call' => false,

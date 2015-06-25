@@ -327,7 +327,7 @@ EOF
     {
         $crawler = $this->createTestCrawler()->filterXPath('//ul[1]/li');
         $nodes = $crawler->reduce(function ($node, $i) {
-            return $i == 1 ? false : true;
+            return $i !== 1;
         });
         $this->assertNotSame($nodes, $crawler, '->reduce() returns a new instance of a crawler');
         $this->assertInstanceOf('Symfony\\Component\\DomCrawler\\Crawler', $nodes, '->reduce() returns a new instance of a crawler');
@@ -984,6 +984,13 @@ HTML;
             array('/basepath', '', 'http://domain.com/registration', 'http://domain.com/registration', '<base> tag does work with a path and empty form action'),
             array('http://base.com', '', 'http://domain.com/path/form', 'http://domain.com/path/form', '<base> tag does work with a URL and an empty form action'),
         );
+    }
+
+    public function testCountOfNestedElements()
+    {
+        $crawler = new Crawler('<html><body><ul><li>List item 1<ul><li>Sublist item 1</li><li>Sublist item 2</ul></li></ul></body></html>');
+
+        $this->assertCount(1, $crawler->filter('li:contains("List item 1")'));
     }
 
     public function createTestCrawler($uri = null)
