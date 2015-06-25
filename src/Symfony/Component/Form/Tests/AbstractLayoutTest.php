@@ -61,7 +61,7 @@ abstract class AbstractLayoutTest extends \Symfony\Component\Form\Test\FormInteg
         try {
             // Wrap in <root> node so we can load HTML with multiple tags at
             // the top level
-            $dom->loadXml('<root>'.$html.'</root>');
+            $dom->loadXML('<root>'.$html.'</root>');
         } catch (\Exception $e) {
             $this->fail(sprintf(
                 "Failed loading HTML:\n\n%s\n\nError: %s",
@@ -1512,7 +1512,10 @@ abstract class AbstractLayoutTest extends \Symfony\Component\Form\Test\FormInteg
         );
     }
 
-    public function testReadOnly()
+    /**
+     * @group legacy
+     */
+    public function testLegacyReadOnly()
     {
         $form = $this->factory->createNamed('name', 'text', null, array(
             'read_only' => true,
@@ -1705,6 +1708,35 @@ abstract class AbstractLayoutTest extends \Symfony\Component\Form\Test\FormInteg
     [@type="radio"]
     [@name="name"]
     [@value="foo&bar"]
+'
+        );
+    }
+
+    public function testRange()
+    {
+        $form = $this->factory->createNamed('name', 'range', 42, array('attr' => array('min' => 5)));
+
+        $this->assertWidgetMatchesXpath($form->createView(), array(),
+'/input
+    [@type="range"]
+    [@name="name"]
+    [@value="42"]
+    [@min="5"]
+'
+        );
+    }
+
+    public function testRangeWithMinMaxValues()
+    {
+        $form = $this->factory->createNamed('name', 'range', 42, array('attr' => array('min' => 5, 'max' => 57)));
+
+        $this->assertWidgetMatchesXpath($form->createView(), array(),
+'/input
+    [@type="range"]
+    [@name="name"]
+    [@value="42"]
+    [@min="5"]
+    [@max="57"]
 '
         );
     }
@@ -2119,14 +2151,13 @@ abstract class AbstractLayoutTest extends \Symfony\Component\Form\Test\FormInteg
         $form = $this->factory->createNamed('text', 'text', 'value', array(
             'required' => true,
             'disabled' => true,
-            'read_only' => true,
-            'attr' => array('maxlength' => 10, 'pattern' => '\d+', 'class' => 'foobar', 'data-foo' => 'bar'),
+            'attr' => array('readonly' => true, 'maxlength' => 10, 'pattern' => '\d+', 'class' => 'foobar', 'data-foo' => 'bar'),
         ));
 
         $html = $this->renderWidget($form->createView());
 
         // compare plain HTML to check the whitespace
-        $this->assertSame('<input type="text" id="text" name="text" readonly="readonly" disabled="disabled" required="required" maxlength="10" pattern="\d+" class="foobar" data-foo="bar" value="value" />', $html);
+        $this->assertSame('<input type="text" id="text" name="text" disabled="disabled" required="required" readonly="readonly" maxlength="10" pattern="\d+" class="foobar" data-foo="bar" value="value" />', $html);
     }
 
     public function testWidgetAttributeNameRepeatedIfTrue()

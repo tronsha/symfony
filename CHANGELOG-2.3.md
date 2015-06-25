@@ -7,6 +7,46 @@ in 2.3 minor versions.
 To get the diff for a specific change, go to https://github.com/symfony/symfony/commit/XXX where XXX is the change hash
 To get the diff between two versions, go to https://github.com/symfony/symfony/compare/v2.3.0...v2.3.1
 
+* 2.3.30 (2015-05-30)
+
+ * bug #14262 [REVERTED] [TwigBundle] Refresh twig paths when resources change. (aitboudad)
+
+* 2.3.29 (2015-05-26)
+
+ * security #14759 CVE-2015-4050 [HttpKernel] Do not call the FragmentListener if _controller is already defined (jakzal)
+ * bug #14715 [Form] Check instance of FormBuilderInterface instead of FormBuilder (dosten)
+ * bug #14678 [Security] AbstractRememberMeServices::encodeCookie() validates cookie parts (MacDada)
+ * bug #14635 [HttpKernel] Handle an array vary header in the http cache store (jakzal)
+ * bug #14513 [console][formater] allow format toString object. (aitboudad)
+ * bug #14335 [HttpFoundation] Fix baseUrl when script filename is contained in pathInfo (danez)
+ * bug #14593 [Security][Firewall] Avoid redirection to XHR URIs (asiragusa)
+ * bug #14618 [DomCrawler] Throw an exception if a form field path is incomplete (jakzal)
+ * bug #14698  Fix HTML escaping of to-source links (nicolas-grekas)
+ * bug #14690 [HttpFoundation] IpUtils::checkIp4() should allow `/0` networks (zerkms)
+ * bug #14262 [TwigBundle] Refresh twig paths when resources change. (aitboudad)
+ * bug #13633 [ServerBag] Handled bearer authorization header in REDIRECT_ form (Lance0312)
+ * bug #13637 [CSS] WebProfiler break words (nicovak)
+ * bug #14633 [EventDispatcher] make listeners removable from an executed listener (xabbuh)
+
+* 2.3.28 (2015-05-10)
+
+ * bug #14266 [HttpKernel] Check if "symfony/proxy-manager-bridge" package is installed (hason)
+ * bug #14501 [ProxyBridge] Fix proxy classnames generation (xphere)
+ * bug #14498 [FrameworkBundle] Added missing log in server:run command (lyrixx)
+ * bug #14484 [SecurityBundle][WebProfiler] check authenticated user by tokenClass instead of username. (aitboudad)
+ * bug #14497 [HttpFoundation] Allow curly braces in trusted host patterns (sgrodzicki)
+ * bug #14436 Show a better error when the port is in use (dosten)
+ * bug #14463 [Validator] Fixed Choice when an empty array is used in the "choices" option (webmozart)
+ * bug #14402 [FrameworkBundle][Translation] Check for 'xlf' instead of 'xliff' (xelaris)
+ * bug #14272 [FrameworkBundle] Workaround php -S ignoring auto_prepend_file (nicolas-grekas)
+ * bug #14345 [FrameworkBundle] Fix Routing\DelegatingLoader resiliency to fatal errors (nicolas-grekas)
+ * bug #14325 [Routing][DependencyInjection] Support .yaml extension in YAML loaders (thunderer)
+ * bug #14344 [Translation][fixed test] refresh cache when resources are no longer fresh. (aitboudad)
+ * bug #14268 [Translator] Cache does not take fallback locales into consideration (sf2.3) (mpdude)
+ * bug #14192 [HttpKernel] Embed the original exception as previous to bounced exceptions (nicolas-grekas)
+ * bug #14102 [Enhancement] netbeans - force interactive shell when limited detection (cordoval)
+ * bug #14191 [StringUtil] Fixed singularification of 'movies' (GerbenWijnja)
+
 * 2.3.27 (2015-04-01)
 
  * security #14167 CVE-2015-2308 (nicolas-grekas)
