@@ -68,8 +68,6 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
      */
     public function testLegacyDenormalizeOnCamelCaseFormat()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $this->normalizer->setCamelizedAttributes(array('camel_case'));
         $obj = $this->normalizer->denormalize(
             array('camel_case' => 'value'),
@@ -83,8 +81,6 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
      */
     public function testLegacyCamelizedAttributesNormalize()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $obj = new PropertyCamelizedDummy('dunglas.fr');
         $obj->fooBar = 'les-tilleuls.coop';
         $obj->bar_foo = 'lostinthesupermarket.fr';
@@ -109,8 +105,6 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
      */
     public function testLegacyCamelizedAttributesDenormalize()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $obj = new PropertyCamelizedDummy('dunglas.fr');
         $obj->fooBar = 'les-tilleuls.coop';
         $obj->bar_foo = 'lostinthesupermarket.fr';
@@ -148,6 +142,17 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
             'any'
         );
         $this->assertEquals('foo', $obj->getFoo());
+        $this->assertEquals('bar', $obj->getBar());
+    }
+
+    public function testConstructorDenormalizeWithNullArgument()
+    {
+        $obj = $this->normalizer->denormalize(
+            array('foo' => null, 'bar' => 'bar'),
+            __NAMESPACE__.'\PropertyConstructorDummy', '
+            any'
+        );
+        $this->assertNull($obj->getFoo());
         $this->assertEquals('bar', $obj->getBar());
     }
 
@@ -418,6 +423,11 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
         $obj->setBar($object);
 
         $this->normalizer->normalize($obj, 'any');
+    }
+
+    public function testNoTraversableSupport()
+    {
+        $this->assertFalse($this->normalizer->supportsNormalization(new \ArrayObject()));
     }
 }
 

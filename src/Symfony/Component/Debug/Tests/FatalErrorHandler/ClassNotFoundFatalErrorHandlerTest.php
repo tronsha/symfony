@@ -73,8 +73,6 @@ class ClassNotFoundFatalErrorHandlerTest extends \PHPUnit_Framework_TestCase
      */
     public function testLegacyHandleClassNotFound()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $prefixes = array('Symfony\Component\Debug\Exception\\' => realpath(__DIR__.'/../../Exception'));
         $symfonyUniversalClassLoader = new SymfonyUniversalClassLoader();
         $symfonyUniversalClassLoader->registerPrefixes($prefixes);
@@ -181,11 +179,11 @@ class ClassNotFoundFatalErrorHandlerTest extends \PHPUnit_Framework_TestCase
 
     public function testCannotRedeclareClass()
     {
-        if (!file_exists(__DIR__.'/../FIXTURES/REQUIREDTWICE.PHP')) {
+        if (!file_exists(__DIR__.'/../FIXTURES2/REQUIREDTWICE.PHP')) {
             $this->markTestSkipped('Can only be run on case insensitive filesystems');
         }
 
-        require_once __DIR__.'/../FIXTURES/REQUIREDTWICE.PHP';
+        require_once __DIR__.'/../FIXTURES2/REQUIREDTWICE.PHP';
 
         $error = array(
             'type' => 1,

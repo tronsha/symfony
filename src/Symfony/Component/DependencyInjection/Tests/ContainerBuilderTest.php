@@ -191,6 +191,13 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($builder->get('bar') === $builder->get('foo'), '->setAlias() creates a service that is an alias to another one');
 
         try {
+            $builder->setAlias('foobar', 'foobar');
+            $this->fail('->setAlias() throws an InvalidArgumentException if the alias references itself');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertEquals('An alias can not reference itself, got a circular reference on "foobar".', $e->getMessage(), '->setAlias() throws an InvalidArgumentException if the alias references itself');
+        }
+
+        try {
             $builder->getAlias('foobar');
             $this->fail('->getAlias() throws an InvalidArgumentException if the alias does not exist');
         } catch (\InvalidArgumentException $e) {
@@ -335,8 +342,6 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
 
     public function testLegacyCreateServiceFactory()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $builder = new ContainerBuilder();
         $builder->register('bar', 'Bar\FooClass');
         $builder
@@ -356,8 +361,6 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
      */
     public function testLegacyCreateServiceFactoryService()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $builder = new ContainerBuilder();
         $builder->register('foo_service', 'Bar\FooClass');
         $builder
@@ -398,9 +401,12 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
         $builder->register('foo3', 'Bar\FooClass')->setConfigurator(array(new Reference('baz'), 'configure'));
         $this->assertTrue($builder->get('foo3')->configured, '->createService() calls the configurator');
 
-        $builder->register('foo4', 'Bar\FooClass')->setConfigurator('foo');
+        $builder->register('foo4', 'Bar\FooClass')->setConfigurator(array($builder->getDefinition('baz'), 'configure'));
+        $this->assertTrue($builder->get('foo4')->configured, '->createService() calls the configurator');
+
+        $builder->register('foo5', 'Bar\FooClass')->setConfigurator('foo');
         try {
-            $builder->get('foo4');
+            $builder->get('foo5');
             $this->fail('->createService() throws an InvalidArgumentException if the configure callable is not a valid callable');
         } catch (\InvalidArgumentException $e) {
             $this->assertEquals('The configure callable for class "Bar\FooClass" is not a callable.', $e->getMessage(), '->createService() throws an InvalidArgumentException if the configure callable is not a valid callable');
@@ -725,8 +731,6 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
      */
     public function testLegacySetOnSynchronizedService()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $container = new ContainerBuilder();
         $container->register('baz', 'BazClass')
             ->setSynchronized(true)
@@ -747,8 +751,6 @@ class ContainerBuilderTest extends \PHPUnit_Framework_TestCase
      */
     public function testLegacySynchronizedServiceWithScopes()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $container = new ContainerBuilder();
         $container->addScope(new Scope('foo'));
         $container->register('baz', 'BazClass')

@@ -177,7 +177,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface
      */
     public function setFallbackLocale($locales)
     {
-        trigger_error('The '.__METHOD__.' method is deprecated since version 2.3 and will be removed in 3.0. Use the setFallbackLocales() method instead.', E_USER_DEPRECATED);
+        @trigger_error('The '.__METHOD__.' method is deprecated since version 2.3 and will be removed in 3.0. Use the setFallbackLocales() method instead.', E_USER_DEPRECATED);
 
         $this->setFallbackLocales(is_array($locales) ? $locales : array($locales));
     }
@@ -292,15 +292,10 @@ class Translator implements TranslatorInterface, TranslatorBagInterface
      */
     public function getMessages($locale = null)
     {
-        $catalogues = array();
-        $catalogues[] = $catalogue = $this->getCatalogue($locale);
+        $catalogue = $this->getCatalogue($locale);
+        $messages = $catalogue->all();
         while ($catalogue = $catalogue->getFallbackCatalogue()) {
-            $catalogues[] = $catalogue;
-        }
-        $messages = array();
-        for ($i = count($catalogues) - 1; $i >= 0; $i--) {
-            $localeMessages = $catalogues[$i]->all();
-            $messages = array_replace_recursive($messages, $localeMessages);
+            $messages = array_replace_recursive($catalogue->all(), $messages);
         }
 
         return $messages;
@@ -424,12 +419,7 @@ EOF
 
     private function getCatalogueCachePath($locale)
     {
-        $catalogueHash = sha1(serialize(array(
-            'resources' => isset($this->resources[$locale]) ? $this->resources[$locale] : array(),
-            'fallback_locales' => $this->fallbackLocales,
-        )));
-
-        return $this->cacheDir.'/catalogue.'.$locale.'.'.$catalogueHash.'.php';
+        return $this->cacheDir.'/catalogue.'.$locale.'.'.sha1(serialize($this->fallbackLocales)).'.php';
     }
 
     private function doLoadCatalogue($locale)

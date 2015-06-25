@@ -20,6 +20,7 @@ use Symfony\Component\Form\ChoiceList\View\ChoiceGroupView;
 use Symfony\Component\Form\ChoiceList\View\ChoiceListView;
 use Symfony\Component\Form\ChoiceList\View\ChoiceView;
 use Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceListInterface as LegacyChoiceListInterface;
+use Symfony\Component\Form\Extension\Core\View\ChoiceView as LegacyChoiceView;
 
 /**
  * Default implementation of {@link ChoiceListFactoryInterface}.
@@ -140,9 +141,16 @@ class DefaultChoiceListFactory implements ChoiceListFactoryInterface
     public function createView(ChoiceListInterface $list, $preferredChoices = null, $label = null, $index = null, $groupBy = null, $attr = null)
     {
         // Backwards compatibility
-        if ($list instanceof LegacyChoiceListInterface && null === $preferredChoices
+        if ($list instanceof LegacyChoiceListInterface && empty($preferredChoices)
             && null === $label && null === $index && null === $groupBy && null === $attr) {
-            return new ChoiceListView($list->getRemainingViews(), $list->getPreferredViews());
+            $mapToNonLegacyChoiceView = function (LegacyChoiceView $choiceView) {
+                return new ChoiceView($choiceView->data, $choiceView->value, $choiceView->label);
+            };
+
+            return new ChoiceListView(
+                array_map($mapToNonLegacyChoiceView, $list->getRemainingViews()),
+                array_map($mapToNonLegacyChoiceView, $list->getPreferredViews())
+            );
         }
 
         $preferredViews = array();
@@ -237,10 +245,10 @@ class DefaultChoiceListFactory implements ChoiceListFactoryInterface
         $nextIndex = is_int($index) ? $index++ : call_user_func($index, $choice, $key, $value);
 
         $view = new ChoiceView(
+            $choice,
+            $value,
             // If the labels are null, use the choice key by default
             null === $label ? (string) $key : (string) call_user_func($label, $choice, $key, $value),
-            $value,
-            $choice,
             // The attributes may be a callable or a mapping from choice indices
             // to nested arrays
             is_callable($attr) ? call_user_func($attr, $choice, $key, $value) : (isset($attr[$key]) ? $attr[$key] : array())
@@ -320,6 +328,8 @@ class DefaultChoiceListFactory implements ChoiceListFactoryInterface
 
             return;
         }
+
+        $groupLabel = (string) $groupLabel;
 
         // Initialize the group views if necessary. Unnnecessarily built group
         // views will be cleaned up at the end of createView()

@@ -705,7 +705,7 @@ EOF;
         }
 
         if ('request' !== $id) {
-            trigger_error('Synchronized services were deprecated in version 2.7 and won\'t work anymore in 3.0.', E_USER_DEPRECATED);
+            @trigger_error('Synchronized services were deprecated in version 2.7 and won\'t work anymore in 3.0.', E_USER_DEPRECATED);
         }
 
         $code = '';
@@ -904,9 +904,6 @@ EOF;
         \$this->services =
         \$this->scopedServices =
         \$this->scopeStacks = array();
-
-        \$this->set('service_container', \$this);
-
 EOF;
 
         $code .= "\n";
@@ -1417,7 +1414,7 @@ EOF;
      */
     public function addExpressionLanguageProvider(ExpressionFunctionProviderInterface $provider)
     {
-        trigger_error('The '.__METHOD__.' method is deprecated since version 2.6.2 and will be removed in 3.0. Use the Symfony\Component\DependencyInjection\ContainerBuilder::addExpressionLanguageProvider method instead.', E_USER_DEPRECATED);
+        @trigger_error('The '.__METHOD__.' method is deprecated since version 2.6.2 and will be removed in 3.0. Use the Symfony\Component\DependencyInjection\ContainerBuilder::addExpressionLanguageProvider method instead.', E_USER_DEPRECATED);
 
         $this->expressionLanguageProviders[] = $provider;
     }

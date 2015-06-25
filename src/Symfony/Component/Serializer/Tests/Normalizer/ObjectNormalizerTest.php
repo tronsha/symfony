@@ -102,8 +102,6 @@ class ObjectNormalizerTest extends \PHPUnit_Framework_TestCase
      */
     public function testLegacyDenormalizeOnCamelCaseFormat()
     {
-        $this->iniSet('error_reporting', -1 & ~E_USER_DEPRECATED);
-
         $this->normalizer->setCamelizedAttributes(array('camel_case'));
         $obj = $this->normalizer->denormalize(
             array('camel_case' => 'camelCase'),
@@ -137,6 +135,16 @@ class ObjectNormalizerTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($obj->isBaz());
     }
 
+    public function testConstructorDenormalizeWithNullArgument()
+    {
+        $obj = $this->normalizer->denormalize(
+            array('foo' => 'foo', 'bar' => null, 'baz' => true),
+            __NAMESPACE__.'\ObjectConstructorDummy', 'any');
+        $this->assertEquals('foo', $obj->getFoo());
+        $this->assertNull($obj->bar);
+        $this->assertTrue($obj->isBaz());
+    }
+
     public function testConstructorDenormalizeWithMissingOptionalArgument()
     {
         $obj = $this->normalizer->denormalize(
@@ -145,6 +153,15 @@ class ObjectNormalizerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('test', $obj->getFoo());
         $this->assertEquals(array(), $obj->bar);
         $this->assertEquals(array(1, 2, 3), $obj->getBaz());
+    }
+
+    public function testConstructorDenormalizeWithOptionalDefaultArgument()
+    {
+        $obj = $this->normalizer->denormalize(
+            array('bar' => 'test'),
+            __NAMESPACE__.'\ObjectConstructorArgsWithDefaultValueDummy', 'any');
+        $this->assertEquals(array(), $obj->getFoo());
+        $this->assertEquals('test', $obj->getBar());
     }
 
     public function testConstructorWithObjectDenormalize()
@@ -429,6 +446,11 @@ class ObjectNormalizerTest extends \PHPUnit_Framework_TestCase
             $this->normalizer->denormalize(array('non_existing' => true), __NAMESPACE__.'\ObjectDummy')
         );
     }
+
+    public function testNoTraversableSupport()
+    {
+        $this->assertFalse($this->normalizer->supportsNormalization(new \ArrayObject()));
+    }
 }
 
 class ObjectDummy
@@ -544,6 +566,33 @@ class ObjectConstructorOptionalArgsDummy
     public function getBaz()
     {
         return $this->baz;
+    }
+
+    public function otherMethod()
+    {
+        throw new \RuntimeException('Dummy::otherMethod() should not be called');
+    }
+}
+
+class ObjectConstructorArgsWithDefaultValueDummy
+{
+    protected $foo;
+    protected $bar;
+
+    public function __construct($foo = array(), $bar)
+    {
+        $this->foo = $foo;
+        $this->bar = $bar;
+    }
+
+    public function getFoo()
+    {
+        return $this->foo;
+    }
+
+    public function getBar()
+    {
+        return $this->bar;
     }
 
     public function otherMethod()

@@ -11,8 +11,8 @@
 
 namespace Symfony\Bundle\FrameworkBundle\Command;
 
+use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Translation\Catalogue\MergeOperation;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
@@ -85,8 +85,9 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $output = new SymfonyStyle($input, $output);
         if (false !== strpos($input->getFirstArgument(), ':d')) {
-            $output->writeln('<comment>The use of "translation:debug" command is deprecated since version 2.7 and will be removed in 3.0. Use the "debug:translation" instead.</comment>');
+            $output->caution('The use of "translation:debug" command is deprecated since version 2.7 and will be removed in 3.0. Use the "debug:translation" instead.');
         }
 
         $locale = $input->getArgument('locale');
@@ -95,35 +96,41 @@ EOF
         $kernel = $this->getContainer()->get('kernel');
 
         // Define Root Path to App folder
-        $rootPath = $kernel->getRootDir();
+        $transPaths = array($kernel->getRootDir().'/Resources/');
 
         // Override with provided Bundle info
         if (null !== $input->getArgument('bundle')) {
             try {
-                $rootPath = $kernel->getBundle($input->getArgument('bundle'))->getPath();
+                $bundle = $kernel->getBundle($input->getArgument('bundle'));
+                $transPaths = array(
+                    $bundle->getPath().'/Resources/',
+                    sprintf('%s/Resources/%s/', $kernel->getRootDir(), $bundle->getName()),
+                );
             } catch (\InvalidArgumentException $e) {
                 // such a bundle does not exist, so treat the argument as path
-                $rootPath = $input->getArgument('bundle');
-
-                if (!is_dir($rootPath)) {
-                    throw new \InvalidArgumentException(sprintf('<error>"%s" is neither an enabled bundle nor a directory.</error>', $rootPath));
+                $transPaths = array($input->getArgument('bundle').'/Resources/');
+                if (!is_dir($transPaths[0])) {
+                    throw new \InvalidArgumentException(sprintf('"%s" is neither an enabled bundle nor a directory.', $transPaths[0]));
                 }
             }
         }
 
-        // get bundle directory
-        $translationsPath = $rootPath.'/Resources/translations';
-
         // Extract used messages
         $extractedCatalogue = new MessageCatalogue($locale);
-        if (is_dir($rootPath.'/Resources/views')) {
-            $this->getContainer()->get('translation.extractor')->extract($rootPath.'/Resources/views', $extractedCatalogue);
+        foreach ($transPaths as $path) {
+            $path = $path.'views';
+            if (is_dir($path)) {
+                $this->getContainer()->get('translation.extractor')->extract($path, $extractedCatalogue);
+            }
         }
 
         // Load defined messages
         $currentCatalogue = new MessageCatalogue($locale);
-        if (is_dir($translationsPath)) {
-            $loader->loadMessages($translationsPath, $currentCatalogue);
+        foreach ($transPaths as $path) {
+            $path = $path.'translations';
+            if (is_dir($path)) {
+                $loader->loadMessages($path, $currentCatalogue);
+            }
         }
 
         // Merge defined and extracted messages to get all message ids
@@ -135,13 +142,13 @@ EOF
 
         // No defined or extracted messages
         if (empty($allMessages) || null !== $domain && empty($allMessages[$domain])) {
-            $outputMessage = sprintf('<info>No defined or extracted messages for locale "%s"</info>', $locale);
+            $outputMessage = sprintf('No defined or extracted messages for locale "%s"', $locale);
 
             if (null !== $domain) {
-                $outputMessage .= sprintf(' <info>and domain "%s"</info>', $domain);
+                $outputMessage .= sprintf(' and domain "%s"', $domain);
             }
 
-            $output->writeln($outputMessage);
+            $output->warning($outputMessage);
 
             return;
         }
@@ -156,15 +163,14 @@ EOF
                 }
 
                 $fallbackCatalogue = new MessageCatalogue($fallbackLocale);
-                $loader->loadMessages($translationsPath, $fallbackCatalogue);
+                foreach ($transPaths as $path) {
+                    $path = $path.'translations';
+                    if (is_dir($path)) {
+                        $loader->loadMessages($path, $fallbackCatalogue);
+                    }
+                }
                 $fallbackCatalogues[] = $fallbackCatalogue;
             }
-        }
-
-        if (class_exists('Symfony\Component\Console\Helper\Table')) {
-            $table = new Table($output);
-        } else {
-            $table = $this->getHelperSet()->get('table');
         }
 
         // Display header line
@@ -172,8 +178,7 @@ EOF
         foreach ($fallbackCatalogues as $fallbackCatalogue) {
             $headers[] = sprintf('Fallback Message Preview (%s)', $fallbackCatalogue->getLocale());
         }
-        $table->setHeaders($headers);
-
+        $rows = array();
         // Iterate all message ids and determine their state
         foreach ($allMessages as $domain => $messages) {
             foreach (array_keys($messages) as $messageId) {
@@ -206,15 +211,11 @@ EOF
                     $row[] = $this->sanitizeString($fallbackCatalogue->get($messageId, $domain));
                 }
 
-                $table->addRow($row);
+                $rows[] = $row;
             }
         }
 
-        if (class_exists('Symfony\Component\Console\Helper\Table')) {
-            $table->render();
-        } else {
-            $table->render($output);
-        }
+        $output->table($headers, $rows);
     }
 
     private function formatState($state)

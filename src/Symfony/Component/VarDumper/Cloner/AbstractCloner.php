@@ -64,6 +64,7 @@ abstract class AbstractCloner implements ClonerInterface
 
         'ErrorException' => 'Symfony\Component\VarDumper\Caster\ExceptionCaster::castErrorException',
         'Exception' => 'Symfony\Component\VarDumper\Caster\ExceptionCaster::castException',
+        'Error' => 'Symfony\Component\VarDumper\Caster\ExceptionCaster::castError',
         'Symfony\Component\DependencyInjection\ContainerInterface' => 'Symfony\Component\VarDumper\Caster\StubCaster::cutInternals',
         'Symfony\Component\VarDumper\Exception\ThrowingCasterException' => 'Symfony\Component\VarDumper\Caster\ExceptionCaster::castThrowingCasterException',
 
@@ -214,7 +215,7 @@ abstract class AbstractCloner implements ClonerInterface
             $classInfo = array(
                 $class,
                 new \ReflectionClass($class),
-                array_reverse(array('*' => '*', $class => $class) + class_parents($class) + class_implements($class)),
+                array_reverse(array($class => $class) + class_parents($class) + class_implements($class) + array('*' => '*')),
             );
 
             $this->classInfo[$class] = $classInfo;
