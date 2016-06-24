@@ -14,17 +14,18 @@ namespace Symfony\Bundle\FrameworkBundle\Tests\DependencyInjection;
 use Symfony\Bundle\FrameworkBundle\Tests\TestCase;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Loader\ClosureLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
-use Symfony\Component\Validator\Validation;
 
 abstract class FrameworkExtensionTest extends TestCase
 {
+    private static $containerCache = array();
+
     abstract protected function loadFromFile(ContainerBuilder $container, $file);
 
-    public function testCsrfProtection()
+    public function testFormCsrfProtection()
     {
         $container = $this->createContainerFromFile('full');
 
@@ -67,13 +68,6 @@ abstract class FrameworkExtensionTest extends TestCase
         $container = $this->createContainerFromFile('csrf');
 
         $this->assertTrue($container->hasDefinition('security.csrf.token_manager'));
-    }
-
-    public function testSecureRandomIsAvailableIfCsrfIsDisabled()
-    {
-        $container = $this->createContainerFromFile('csrf_disabled');
-
-        $this->assertTrue($container->hasDefinition('security.secure_random'));
     }
 
     public function testProxies()
@@ -149,7 +143,8 @@ abstract class FrameworkExtensionTest extends TestCase
         $this->assertEquals('/', $options['cookie_path']);
         $this->assertEquals('example.com', $options['cookie_domain']);
         $this->assertTrue($options['cookie_secure']);
-        $this->assertTrue($options['cookie_httponly']);
+        $this->assertFalse($options['cookie_httponly']);
+        $this->assertTrue($options['use_cookies']);
         $this->assertEquals(108, $options['gc_divisor']);
         $this->assertEquals(1, $options['gc_probability']);
         $this->assertEquals(90000, $options['gc_maxlifetime']);
@@ -203,17 +198,30 @@ abstract class FrameworkExtensionTest extends TestCase
         $this->assertEquals('global_hinclude_template', $container->getParameter('fragment.renderer.hinclude.global_template'), '->registerTemplatingConfiguration() registers the global hinclude.js template');
     }
 
-    /**
-     * @group legacy
-     */
-    public function testLegacyTemplatingAssets()
-    {
-        $this->checkAssetsPackages($this->createContainerFromFile('legacy_templating_assets'), true);
-    }
-
     public function testAssets()
     {
-        $this->checkAssetsPackages($this->createContainerFromFile('assets'));
+        $container = $this->createContainerFromFile('assets');
+        $packages = $container->getDefinition('assets.packages');
+
+        // default package
+        $defaultPackage = $container->getDefinition($packages->getArgument(0));
+        $this->assertUrlPackage($container, $defaultPackage, array('http://cdn.example.com'), 'SomeVersionScheme', '%%s?version=%%s');
+
+        // packages
+        $packages = $packages->getArgument(1);
+        $this->assertCount(5, $packages);
+
+        $package = $container->getDefinition($packages['images_path']);
+        $this->assertPathPackage($container, $package, '/foo', 'SomeVersionScheme', '%%s?version=%%s');
+
+        $package = $container->getDefinition($packages['images']);
+        $this->assertUrlPackage($container, $package, array('http://images1.example.com', 'http://images2.example.com'), '1.0.0', '%%s?version=%%s');
+
+        $package = $container->getDefinition($packages['foo']);
+        $this->assertPathPackage($container, $package, '', '1.0.0', '%%s-%%s');
+
+        $package = $container->getDefinition($packages['bar']);
+        $this->assertUrlPackage($container, $package, array('https://bar2.example.com'), 'SomeVersionScheme', '%%s?version=%%s');
     }
 
     public function testTranslator()
@@ -242,9 +250,14 @@ abstract class FrameworkExtensionTest extends TestCase
             $files,
             '->registerTranslatorConfiguration() finds Security translation resources'
         );
+        $this->assertContains(
+            strtr(__DIR__.'/Fixtures/translations/test_paths.en.yml', '/', DIRECTORY_SEPARATOR),
+            $files,
+            '->registerTranslatorConfiguration() finds translation resources in custom paths'
+        );
 
         $calls = $container->getDefinition('translator.default')->getMethodCalls();
-        $this->assertEquals(array('fr'), $calls[0][1][0]);
+        $this->assertEquals(array('fr'), $calls[1][1][0]);
     }
 
     public function testTranslatorMultipleFallbacks()
@@ -252,7 +265,7 @@ abstract class FrameworkExtensionTest extends TestCase
         $container = $this->createContainerFromFile('translator_fallbacks');
 
         $calls = $container->getDefinition('translator.default')->getMethodCalls();
-        $this->assertEquals(array('en', 'fr'), $calls[0][1][0]);
+        $this->assertEquals(array('en', 'fr'), $calls[1][1][0]);
     }
 
     /**
@@ -270,7 +283,7 @@ abstract class FrameworkExtensionTest extends TestCase
         $container = $this->createContainerFromFile('full');
 
         $ref = new \ReflectionClass('Symfony\Component\Form\Form');
-        $xmlMappings = array(realpath(dirname($ref->getFileName()).'/Resources/config/validation.xml'));
+        $xmlMappings = array(dirname($ref->getFileName()).'/Resources/config/validation.xml');
 
         $calls = $container->getDefinition('validator.builder')->getMethodCalls();
 
@@ -286,21 +299,7 @@ abstract class FrameworkExtensionTest extends TestCase
         $this->assertSame('addMethodMapping', $calls[4][0]);
         $this->assertSame(array('loadValidatorMetadata'), $calls[4][1]);
         $this->assertSame('setMetadataCache', $calls[5][0]);
-        $this->assertEquals(array(new Reference('validator.mapping.cache.apc')), $calls[5][1]);
-    }
-
-    /**
-     * @group legacy
-     */
-    public function testLegacyFullyConfiguredValidationService()
-    {
-        if (!extension_loaded('apc')) {
-            $this->markTestSkipped('The apc extension is not available.');
-        }
-
-        $container = $this->createContainerFromFile('full');
-
-        $this->assertInstanceOf('Symfony\Component\Validator\Validator\ValidatorInterface', $container->get('validator'));
+        $this->assertEquals(array(new Reference('validator.mapping.cache.doctrine.apc')), $calls[5][1]);
     }
 
     public function testValidationService()
@@ -314,8 +313,9 @@ abstract class FrameworkExtensionTest extends TestCase
     {
         $container = $this->createContainerFromFile('full');
 
-        $this->assertEquals($container->getParameter('kernel.cache_dir').'/annotations', $container->getDefinition('annotations.file_cache_reader')->getArgument(1));
-        $this->assertInstanceOf('Doctrine\Common\Annotations\FileCacheReader', $container->get('annotation_reader'));
+        $this->assertEquals($container->getParameter('kernel.cache_dir').'/annotations', $container->getDefinition('annotations.filesystem_cache')->getArgument(0));
+        $this->assertSame('annotations.cached_reader', (string) $container->getAlias('annotation_reader'));
+        $this->assertSame('annotations.filesystem_cache', (string) $container->getDefinition('annotations.cached_reader')->getArgument(1));
     }
 
     public function testFileLinkFormat()
@@ -390,28 +390,6 @@ abstract class FrameworkExtensionTest extends TestCase
         $this->assertFalse($container->getParameter('form.type_extension.csrf.enabled'));
     }
 
-    /**
-     * @group legacy
-     */
-    public function testLegacyFormCsrfFieldNameCanBeSetUnderCsrfSettings()
-    {
-        $container = $this->createContainerFromFile('form_csrf_sets_field_name');
-
-        $this->assertTrue($container->getParameter('form.type_extension.csrf.enabled'));
-        $this->assertEquals('_custom', $container->getParameter('form.type_extension.csrf.field_name'));
-    }
-
-    /**
-     * @group legacy
-     */
-    public function testLegacyFormCsrfFieldNameUnderFormSettingsTakesPrecedence()
-    {
-        $container = $this->createContainerFromFile('form_csrf_under_form_sets_field_name');
-
-        $this->assertTrue($container->getParameter('form.type_extension.csrf.enabled'));
-        $this->assertEquals('_custom_form', $container->getParameter('form.type_extension.csrf.field_name'));
-    }
-
     public function testStopwatchEnabledWithDebugModeEnabled()
     {
         $container = $this->createContainerFromFile('default_config', array(
@@ -441,6 +419,24 @@ abstract class FrameworkExtensionTest extends TestCase
     {
         $container = $this->createContainerFromFile('full');
         $this->assertTrue($container->has('serializer'));
+
+        $argument = $container->getDefinition('serializer.mapping.chain_loader')->getArgument(0);
+
+        $this->assertCount(1, $argument);
+        $this->assertEquals('Symfony\Component\Serializer\Mapping\Loader\AnnotationLoader', $argument[0]->getClass());
+        $this->assertEquals(new Reference('serializer.mapping.cache.apc'), $container->getDefinition('serializer.mapping.class_metadata_factory')->getArgument(1));
+        $this->assertEquals(new Reference('serializer.name_converter.camel_case_to_snake_case'), $container->getDefinition('serializer.normalizer.object')->getArgument(1));
+    }
+
+    public function testObjectNormalizerRegistered()
+    {
+        $container = $this->createContainerFromFile('full');
+
+        $definition = $container->getDefinition('serializer.normalizer.object');
+        $tag = $definition->getTag('serializer.normalizer');
+
+        $this->assertEquals('Symfony\Component\Serializer\Normalizer\ObjectNormalizer', $definition->getClass());
+        $this->assertEquals(-1000, $tag[0]['priority']);
     }
 
     public function testAssetHelperWhenAssetsAreEnabled()
@@ -451,12 +447,52 @@ abstract class FrameworkExtensionTest extends TestCase
         $this->assertSame('assets.packages', (string) $packages);
     }
 
-    public function testAssetHelperWhenTemplatesAreEnabledAndAssetsAreDisabled()
+    public function testAssetHelperWhenTemplatesAreEnabledAndNoAssetsConfiguration()
     {
-        $container = $this->createContainerFromFile('assets_disabled');
+        $container = $this->createContainerFromFile('templating_no_assets');
         $packages = $container->getDefinition('templating.helper.assets')->getArgument(0);
 
         $this->assertSame('assets.packages', (string) $packages);
+    }
+
+    public function testAssetsHelperIsRemovedWhenPhpTemplatingEngineIsEnabledAndAssetsAreDisabled()
+    {
+        $container = $this->createContainerFromFile('templating_php_assets_disabled');
+
+        $this->assertTrue(!$container->has('templating.helper.assets'), 'The templating.helper.assets helper service is removed when assets are disabled.');
+    }
+
+    public function testAssetHelperWhenAssetsAndTemplatesAreDisabled()
+    {
+        $container = $this->createContainerFromFile('default_config');
+
+        $this->assertFalse($container->hasDefinition('templating.helper.assets'));
+    }
+
+    public function testSerializerServiceIsRegisteredWhenEnabled()
+    {
+        $container = $this->createContainerFromFile('serializer_enabled');
+
+        $this->assertTrue($container->hasDefinition('serializer'));
+    }
+
+    public function testSerializerServiceIsNotRegisteredWhenDisabled()
+    {
+        $container = $this->createContainerFromFile('serializer_disabled');
+
+        $this->assertFalse($container->hasDefinition('serializer'));
+    }
+
+    public function testPropertyInfoDisabled()
+    {
+        $container = $this->createContainerFromFile('default_config');
+        $this->assertFalse($container->has('property_info'));
+    }
+
+    public function testPropertyInfoEnabled()
+    {
+        $container = $this->createContainerFromFile('property_info');
+        $this->assertTrue($container->has('property_info'));
     }
 
     protected function createContainer(array $data = array())
@@ -473,6 +509,10 @@ abstract class FrameworkExtensionTest extends TestCase
 
     protected function createContainerFromFile($file, $data = array())
     {
+        $cacheKey = md5(get_class($this).$file.serialize($data));
+        if (isset(self::$containerCache[$cacheKey])) {
+            return self::$containerCache[$cacheKey];
+        }
         $container = $this->createContainer($data);
         $container->registerExtension(new FrameworkExtension());
         $this->loadFromFile($container, $file);
@@ -481,7 +521,7 @@ abstract class FrameworkExtensionTest extends TestCase
         $container->getCompilerPassConfig()->setRemovingPasses(array());
         $container->compile();
 
-        return $container;
+        return self::$containerCache[$cacheKey] = $container;
     }
 
     protected function createContainerFromClosure($closure, $data = array())
@@ -498,41 +538,14 @@ abstract class FrameworkExtensionTest extends TestCase
         return $container;
     }
 
-    private function checkAssetsPackages(ContainerBuilder $container, $legacy = false)
-    {
-        $packages = $container->getDefinition('assets.packages');
-
-        // default package
-        $defaultPackage = $container->getDefinition($packages->getArgument(0));
-        $this->assertUrlPackage($container, $defaultPackage, array('http://cdn.example.com'), 'SomeVersionScheme', '%%s?version=%%s');
-
-        // packages
-        $packages = $packages->getArgument(1);
-        $this->assertCount($legacy ? 3 : 4, $packages);
-
-        if (!$legacy) {
-            $package = $container->getDefinition($packages['images_path']);
-            $this->assertPathPackage($container, $package, '/foo', 'SomeVersionScheme', '%%s?version=%%s');
-        }
-
-        $package = $container->getDefinition($packages['images']);
-        $this->assertUrlPackage($container, $package, array('http://images1.example.com', 'http://images2.example.com'), '1.0.0', $legacy ? '%%s?%%s' : '%%s?version=%%s');
-
-        $package = $container->getDefinition($packages['foo']);
-        $this->assertPathPackage($container, $package, '', '1.0.0', '%%s-%%s');
-
-        $package = $container->getDefinition($packages['bar']);
-        $this->assertUrlPackage($container, $package, array('https://bar2.example.com'), $legacy ? '' : 'SomeVersionScheme', $legacy ? '%%s?%%s' : '%%s?version=%%s');
-    }
-
-    private function assertPathPackage(ContainerBuilder $container, Definition $package, $basePath, $version, $format)
+    private function assertPathPackage(ContainerBuilder $container, DefinitionDecorator $package, $basePath, $version, $format)
     {
         $this->assertEquals('assets.path_package', $package->getParent());
         $this->assertEquals($basePath, $package->getArgument(0));
         $this->assertVersionStrategy($container, $package->getArgument(1), $version, $format);
     }
 
-    private function assertUrlPackage(ContainerBuilder $container, Definition $package, $baseUrls, $version, $format)
+    private function assertUrlPackage(ContainerBuilder $container, DefinitionDecorator $package, $baseUrls, $version, $format)
     {
         $this->assertEquals('assets.url_package', $package->getParent());
         $this->assertEquals($baseUrls, $package->getArgument(0));

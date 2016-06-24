@@ -34,8 +34,6 @@ class AnalyzeServiceReferencesPass implements RepeatablePassInterface
     private $onlyConstructorArguments;
 
     /**
-     * Constructor.
-     *
      * @param bool $onlyConstructorArguments Sets this Service Reference pass to ignore method calls
      */
     public function __construct($onlyConstructorArguments = false)
@@ -71,9 +69,6 @@ class AnalyzeServiceReferencesPass implements RepeatablePassInterface
             $this->currentDefinition = $definition;
 
             $this->processArguments($definition->getArguments());
-            if ($definition->getFactoryService(false)) {
-                $this->processArguments(array(new Reference($definition->getFactoryService(false))));
-            }
             if (is_array($definition->getFactory())) {
                 $this->processArguments($definition->getFactory());
             }
@@ -117,9 +112,6 @@ class AnalyzeServiceReferencesPass implements RepeatablePassInterface
 
                 if (is_array($argument->getFactory())) {
                     $this->processArguments($argument->getFactory());
-                }
-                if ($argument->getFactoryService(false)) {
-                    $this->processArguments(array(new Reference($argument->getFactoryService(false))));
                 }
             }
         }

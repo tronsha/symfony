@@ -146,7 +146,9 @@ class DoctrineChoiceLoader implements ChoiceLoaderInterface
 
         // Optimize performance in case we have an object loader and
         // a single-field identifier
-        if (!$this->choiceList && $this->objectLoader && $this->idReader->isSingleId()) {
+        $optimize = null === $value || is_array($value) && $value[0] === $this->idReader;
+
+        if ($optimize && !$this->choiceList && $this->objectLoader && $this->idReader->isSingleId()) {
             $unorderedObjects = $this->objectLoader->getEntitiesByIds($this->idReader->getIdField(), $values);
             $objectsById = array();
             $objects = array();
@@ -156,7 +158,7 @@ class DoctrineChoiceLoader implements ChoiceLoaderInterface
             // "INDEX BY" clause to the Doctrine query in the loader,
             // but I'm not sure whether that's doable in a generic fashion.
             foreach ($unorderedObjects as $object) {
-                $objectsById[$this->idReader->getIdValue($object)] = $object;
+                $objectsById[(string) $this->idReader->getIdValue($object)] = $object;
             }
 
             foreach ($values as $i => $id) {

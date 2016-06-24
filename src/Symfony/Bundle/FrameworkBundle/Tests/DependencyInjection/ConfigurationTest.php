@@ -27,6 +27,19 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
         );
     }
 
+    public function testDoNoDuplicateDefaultFormResources()
+    {
+        $input = array('templating' => array(
+            'form' => array('resources' => array('FrameworkBundle:Form')),
+            'engines' => array('php'),
+        ));
+
+        $processor = new Processor();
+        $config = $processor->processConfiguration(new Configuration(true), array($input));
+
+        $this->assertEquals(array('FrameworkBundle:Form'), $config['templating']['form']['resources']);
+    }
+
     /**
      * @dataProvider getTestValidTrustedProxiesData
      */
@@ -53,6 +66,7 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
             array(array(), array()),
             array(array('10.0.0.0/8'), array('10.0.0.0/8')),
             array(array('::ffff:0:0/96'), array('::ffff:0:0/96')),
+            array(array('0.0.0.0/0'), array('0.0.0.0/0')),
         );
     }
 
@@ -86,24 +100,21 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
         ));
     }
 
-    /**
-     * @expectedException \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException
-     * @expectedExceptionMessage You cannot use assets settings under "framework.templating" and "assets" configurations in the same project.
-     * @group legacy
-     */
-    public function testLegacyInvalidValueAssets()
+    public function testAssetsCanBeEnabled()
     {
         $processor = new Processor();
         $configuration = new Configuration(true);
-        $processor->processConfiguration($configuration, array(
-            array(
-                'templating' => array(
-                    'engines' => null,
-                    'assets_base_urls' => '//example.com',
-                ),
-                'assets' => null,
-            ),
-        ));
+        $config = $processor->processConfiguration($configuration, array(array('assets' => null)));
+
+        $defaultConfig = array(
+            'version' => null,
+            'version_format' => '%%s?%%s',
+            'base_path' => '',
+            'base_urls' => array(),
+            'packages' => array(),
+        );
+
+        $this->assertEquals($defaultConfig, $config['assets']);
     }
 
     protected static function getBundleDefaultConfig()
@@ -113,16 +124,15 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
             'trusted_proxies' => array(),
             'ide' => null,
             'default_locale' => 'en',
+            'csrf_protection' => array(
+                'enabled' => false,
+            ),
             'form' => array(
                 'enabled' => false,
                 'csrf_protection' => array(
                     'enabled' => null, // defaults to csrf_protection.enabled
-                    'field_name' => null,
+                    'field_name' => '_token',
                 ),
-            ),
-            'csrf_protection' => array(
-                'enabled' => false,
-                'field_name' => '_token',
             ),
             'esi' => array('enabled' => false),
             'ssi' => array('enabled' => false),
@@ -135,15 +145,13 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
                 'only_exceptions' => false,
                 'only_master_requests' => false,
                 'dsn' => 'file:%kernel.cache_dir%/profiler',
-                'username' => '',
-                'password' => '',
-                'lifetime' => 86400,
                 'collect' => true,
             ),
             'translator' => array(
                 'enabled' => false,
                 'fallbacks' => array('en'),
                 'logging' => true,
+                'paths' => array(),
             ),
             'validation' => array(
                 'enabled' => false,
@@ -155,7 +163,7 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
             'annotations' => array(
                 'cache' => 'file',
                 'file_cache_dir' => '%kernel.cache_dir%/annotations',
-                'debug' => '%kernel.debug%',
+                'debug' => true,
             ),
             'serializer' => array(
                 'enabled' => false,
@@ -165,12 +173,8 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
                 'magic_call' => false,
                 'throw_exception_on_invalid_index' => false,
             ),
-            'assets' => array(
-                'version' => null,
-                'version_format' => '%%s?%%s',
-                'base_path' => '',
-                'base_urls' => array(),
-                'packages' => array(),
+            'property_info' => array(
+                'enabled' => false,
             ),
         );
     }
