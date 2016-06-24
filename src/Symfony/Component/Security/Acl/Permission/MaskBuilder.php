@@ -96,10 +96,10 @@ class MaskBuilder extends AbstractMaskBuilder
      *
      * @param int $mask
      *
+     * @return string
+     *
      * @throws \InvalidArgumentException
      * @throws \RuntimeException
-     *
-     * @return string
      */
     public static function getCode($mask)
     {
@@ -124,7 +124,7 @@ class MaskBuilder extends AbstractMaskBuilder
     }
 
     /**
-     * Returns the mask for the passed code
+     * Returns the mask for the passed code.
      *
      * @param mixed $code
      *

@@ -27,30 +27,40 @@ use Symfony\Component\Serializer\NameConverter\NameConverterInterface;
  */
 abstract class AbstractNormalizer extends SerializerAwareNormalizer implements NormalizerInterface, DenormalizerInterface
 {
+    const CIRCULAR_REFERENCE_LIMIT = 'circular_reference_limit';
+    const OBJECT_TO_POPULATE = 'object_to_populate';
+    const GROUPS = 'groups';
+
     /**
      * @var int
      */
     protected $circularReferenceLimit = 1;
+
     /**
      * @var callable
      */
     protected $circularReferenceHandler;
+
     /**
      * @var ClassMetadataFactoryInterface|null
      */
     protected $classMetadataFactory;
+
     /**
      * @var NameConverterInterface|null
      */
     protected $nameConverter;
+
     /**
      * @var array
      */
     protected $callbacks = array();
+
     /**
      * @var array
      */
     protected $ignoredAttributes = array();
+
     /**
      * @var array
      */
@@ -105,7 +115,7 @@ abstract class AbstractNormalizer extends SerializerAwareNormalizer implements N
     /**
      * Set normalization callbacks.
      *
-     * @param array $callbacks help normalize the result
+     * @param callable[] $callbacks help normalize the result
      *
      * @return self
      *
@@ -185,16 +195,16 @@ abstract class AbstractNormalizer extends SerializerAwareNormalizer implements N
     {
         $objectHash = spl_object_hash($object);
 
-        if (isset($context['circular_reference_limit'][$objectHash])) {
-            if ($context['circular_reference_limit'][$objectHash] >= $this->circularReferenceLimit) {
-                unset($context['circular_reference_limit'][$objectHash]);
+        if (isset($context[static::CIRCULAR_REFERENCE_LIMIT][$objectHash])) {
+            if ($context[static::CIRCULAR_REFERENCE_LIMIT][$objectHash] >= $this->circularReferenceLimit) {
+                unset($context[static::CIRCULAR_REFERENCE_LIMIT][$objectHash]);
 
                 return true;
             }
 
-            $context['circular_reference_limit'][$objectHash]++;
+            ++$context[static::CIRCULAR_REFERENCE_LIMIT][$objectHash];
         } else {
-            $context['circular_reference_limit'][$objectHash] = 1;
+            $context[static::CIRCULAR_REFERENCE_LIMIT][$objectHash] = 1;
         }
 
         return false;
@@ -248,18 +258,18 @@ abstract class AbstractNormalizer extends SerializerAwareNormalizer implements N
      */
     protected function getAllowedAttributes($classOrObject, array $context, $attributesAsString = false)
     {
-        if (!$this->classMetadataFactory || !isset($context['groups']) || !is_array($context['groups'])) {
+        if (!$this->classMetadataFactory || !isset($context[static::GROUPS]) || !is_array($context[static::GROUPS])) {
             return false;
         }
 
         $allowedAttributes = array();
         foreach ($this->classMetadataFactory->getMetadataFor($classOrObject)->getAttributesMetadata() as $attributeMetadata) {
-            if (count(array_intersect($attributeMetadata->getGroups(), $context['groups']))) {
+            if (count(array_intersect($attributeMetadata->getGroups(), $context[static::GROUPS]))) {
                 $allowedAttributes[] = $attributesAsString ? $attributeMetadata->getName() : $attributeMetadata;
             }
         }
 
-        return array_unique($allowedAttributes);
+        return $allowedAttributes;
     }
 
     /**
@@ -272,26 +282,16 @@ abstract class AbstractNormalizer extends SerializerAwareNormalizer implements N
      */
     protected function prepareForDenormalization($data)
     {
-        if (is_array($data) || is_object($data) && $data instanceof \ArrayAccess) {
-            $normalizedData = $data;
-        } elseif (is_object($data)) {
-            $normalizedData = array();
-
-            foreach ($data as $attribute => $value) {
-                $normalizedData[$attribute] = $value;
-            }
-        } else {
-            $normalizedData = array();
-        }
-
-        return $normalizedData;
+        return (array) $data;
     }
 
     /**
      * Instantiates an object using constructor parameters when needed.
      *
      * This method also allows to denormalize data into an existing object if
-     * it is present in the context with the object_to_populate key.
+     * it is present in the context with the object_to_populate. This object
+     * is removed from the context before being returned to avoid side effects
+     * when recursively normalizing an object graph.
      *
      * @param array            $data
      * @param string           $class
@@ -303,14 +303,17 @@ abstract class AbstractNormalizer extends SerializerAwareNormalizer implements N
      *
      * @throws RuntimeException
      */
-    protected function instantiateObject(array $data, $class, array &$context, \ReflectionClass $reflectionClass, $allowedAttributes)
+    protected function instantiateObject(array &$data, $class, array &$context, \ReflectionClass $reflectionClass, $allowedAttributes)
     {
         if (
-            isset($context['object_to_populate']) &&
-            is_object($context['object_to_populate']) &&
-            $class === get_class($context['object_to_populate'])
+            isset($context[static::OBJECT_TO_POPULATE]) &&
+            is_object($context[static::OBJECT_TO_POPULATE]) &&
+            $context[static::OBJECT_TO_POPULATE] instanceof $class
         ) {
-            return $context['object_to_populate'];
+            $object = $context[static::OBJECT_TO_POPULATE];
+            unset($context[static::OBJECT_TO_POPULATE]);
+
+            return $object;
         }
 
         $constructor = $reflectionClass->getConstructor();
@@ -324,7 +327,15 @@ abstract class AbstractNormalizer extends SerializerAwareNormalizer implements N
 
                 $allowed = $allowedAttributes === false || in_array($paramName, $allowedAttributes);
                 $ignored = in_array($paramName, $this->ignoredAttributes);
-                if ($allowed && !$ignored && array_key_exists($key, $data)) {
+                if (method_exists($constructorParameter, 'isVariadic') && $constructorParameter->isVariadic()) {
+                    if ($allowed && !$ignored && (isset($data[$key]) || array_key_exists($key, $data))) {
+                        if (!is_array($data[$paramName])) {
+                            throw new RuntimeException(sprintf('Cannot create an instance of %s from serialized data because the variadic parameter %s can only accept an array.', $class, $constructorParameter->name));
+                        }
+
+                        $params = array_merge($params, $data[$paramName]);
+                    }
+                } elseif ($allowed && !$ignored && (isset($data[$key]) || array_key_exists($key, $data))) {
                     $params[] = $data[$key];
                     // don't run set for a parameter passed to the constructor
                     unset($data[$key]);

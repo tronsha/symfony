@@ -434,7 +434,6 @@ class OptionsResolver implements Options, OptionsResolverInterface
      * @throws AccessException           If called from a lazy option or normalizer
      *
      * @see setNormalizer()
-     *
      * @deprecated since version 2.6, to be removed in 3.0.
      */
     public function setNormalizers(array $normalizers)
@@ -855,8 +854,16 @@ class OptionsResolver implements Options, OptionsResolverInterface
             // dependency
             // BEGIN
             $this->calling[$option] = true;
-            foreach ($this->lazy[$option] as $closure) {
-                $value = $closure($this, $value);
+            try {
+                foreach ($this->lazy[$option] as $closure) {
+                    $value = $closure($this, $value);
+                }
+            } catch (\Exception $e) {
+                unset($this->calling[$option]);
+                throw $e;
+            } catch (\Throwable $e) {
+                unset($this->calling[$option]);
+                throw $e;
             }
             unset($this->calling[$option]);
             // END
@@ -954,7 +961,15 @@ class OptionsResolver implements Options, OptionsResolverInterface
             // dependency
             // BEGIN
             $this->calling[$option] = true;
-            $value = $normalizer($this, $value);
+            try {
+                $value = $normalizer($this, $value);
+            } catch (\Exception $e) {
+                unset($this->calling[$option]);
+                throw $e;
+            } catch (\Throwable $e) {
+                unset($this->calling[$option]);
+                throw $e;
+            }
             unset($this->calling[$option]);
             // END
         }

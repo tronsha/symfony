@@ -102,6 +102,7 @@ class GetSetMethodNormalizer extends AbstractNormalizer
         $reflectionClass = new \ReflectionClass($class);
         $object = $this->instantiateObject($normalizedData, $class, $context, $reflectionClass, $allowedAttributes);
 
+        $classMethods = get_class_methods($object);
         foreach ($normalizedData as $attribute => $value) {
             if ($this->nameConverter) {
                 $attribute = $this->nameConverter->denormalize($attribute);
@@ -113,7 +114,7 @@ class GetSetMethodNormalizer extends AbstractNormalizer
             if ($allowed && !$ignored) {
                 $setter = 'set'.ucfirst($attribute);
 
-                if (method_exists($object, $setter)) {
+                if (in_array($setter, $classMethods) && !$reflectionClass->getMethod($setter)->isStatic()) {
                     $object->$setter($value);
                 }
             }
@@ -169,10 +170,13 @@ class GetSetMethodNormalizer extends AbstractNormalizer
     {
         $methodLength = strlen($method->name);
 
-        return (
-            ((0 === strpos($method->name, 'get') && 3 < $methodLength) ||
-            (0 === strpos($method->name, 'is') && 2 < $methodLength)) &&
-            0 === $method->getNumberOfRequiredParameters()
-        );
+        return
+            !$method->isStatic() &&
+            (
+                ((0 === strpos($method->name, 'get') && 3 < $methodLength) ||
+                (0 === strpos($method->name, 'is') && 2 < $methodLength)) &&
+                0 === $method->getNumberOfRequiredParameters()
+            )
+        ;
     }
 }

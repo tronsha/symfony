@@ -82,7 +82,7 @@ class UniqueEntityValidator extends ConstraintValidator
         $criteria = array();
         foreach ($fields as $fieldName) {
             if (!$class->hasField($fieldName) && !$class->hasAssociation($fieldName)) {
-                throw new ConstraintDefinitionException(sprintf("The field '%s' is not mapped by Doctrine, so it cannot be validated for uniqueness.", $fieldName));
+                throw new ConstraintDefinitionException(sprintf('The field "%s" is not mapped by Doctrine, so it cannot be validated for uniqueness.', $fieldName));
             }
 
             $criteria[$fieldName] = $class->reflFields[$fieldName]->getValue($entity);
@@ -97,22 +97,15 @@ class UniqueEntityValidator extends ConstraintValidator
                  * getter methods in the Proxy are being bypassed.
                  */
                 $em->initializeObject($criteria[$fieldName]);
-
-                $relatedClass = $em->getClassMetadata($class->getAssociationTargetClass($fieldName));
-                $relatedId = $relatedClass->getIdentifierValues($criteria[$fieldName]);
-
-                if (count($relatedId) > 1) {
-                    throw new ConstraintDefinitionException(
-                        'Associated entities are not allowed to have more than one identifier field to be '.
-                        'part of a unique constraint in: '.$class->getName().'#'.$fieldName
-                    );
-                }
-                $criteria[$fieldName] = array_pop($relatedId);
             }
         }
 
         $repository = $em->getRepository(get_class($entity));
         $result = $repository->{$constraint->repositoryMethod}($criteria);
+
+        if ($result instanceof \IteratorAggregate) {
+            $result = $result->getIterator();
+        }
 
         /* If the result is a MongoCursor, it must be advanced to the first
          * element. Rewinding should have no ill effect if $result is another

@@ -115,4 +115,39 @@ class FormExtensionBootstrap3LayoutTest extends AbstractBootstrap3LayoutTest
     {
         $this->extension->renderer->setTheme($view, $themes);
     }
+
+    public function testRange()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testRangeWithMinMaxValues()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testLabelWithoutTranslationOnButton()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testSingleChoiceWithPlaceholderWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testSingleChoiceExpandedWithPlaceholderWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testButtonlabelWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testAttributesNotTranslatedWhenTranslationDomainIsFalse()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
 }

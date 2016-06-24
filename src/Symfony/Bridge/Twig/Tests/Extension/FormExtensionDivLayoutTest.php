@@ -208,4 +208,39 @@ class FormExtensionDivLayoutTest extends AbstractDivLayoutTest
             array(array('parent_label.html.twig'), array('child_label.html.twig')),
         );
     }
+
+    public function testRange()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testRangeWithMinMaxValues()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testLabelWithoutTranslationOnButton()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testSingleChoiceWithPlaceholderWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testSingleChoiceExpandedWithPlaceholderWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testButtonlabelWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testAttributesNotTranslatedWhenTranslationDomainIsFalse()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
 }

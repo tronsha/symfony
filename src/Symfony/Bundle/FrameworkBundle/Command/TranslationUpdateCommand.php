@@ -45,9 +45,10 @@ class TranslationUpdateCommand extends ContainerAwareCommand
                 new InputOption('clean', null, InputOption::VALUE_NONE, 'Should clean not found messages'),
             ))
             ->setDescription('Updates the translation file')
-            ->setHelp(<<<EOF
-The <info>%command.name%</info> command extract translation strings from templates
+            ->setHelp(<<<'EOF'
+The <info>%command.name%</info> command extracts translation strings from templates
 of a given bundle or the app folder. It can display them or merge the new ones into the translation files.
+
 When new translation strings are found it can automatically add a prefix to the translation
 message.
 
@@ -69,7 +70,6 @@ EOF
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $output = new SymfonyStyle($input, $output);
-        $kernel = $this->getContainer()->get('kernel');
 
         // check presence of force or dump-message
         if ($input->getOption('force') !== true && $input->getOption('dump-messages') !== true) {
@@ -121,7 +121,7 @@ EOF
         $extractor = $this->getContainer()->get('translation.extractor');
         $extractor->setPrefix($input->getOption('prefix'));
         foreach ($transPaths as $path) {
-            $path = $path.'views';
+            $path .= 'views';
             if (is_dir($path)) {
                 $extractor->extract($path, $extractedCatalogue);
             }
@@ -132,7 +132,7 @@ EOF
         $output->text('Loading translation files');
         $loader = $this->getContainer()->get('translation.loader');
         foreach ($transPaths as $path) {
-            $path = $path.'translations';
+            $path .= 'translations';
             if (is_dir($path)) {
                 $loader->loadMessages($path, $currentCatalogue);
             }
@@ -183,15 +183,17 @@ EOF
 
             $bundleTransPath = false;
             foreach ($transPaths as $path) {
-                $path = $path.'translations';
+                $path .= 'translations';
                 if (is_dir($path)) {
                     $bundleTransPath = $path;
                 }
             }
 
-            if ($bundleTransPath) {
-                $writer->writeTranslations($operation->getResult(), $input->getOption('output-format'), array('path' => $bundleTransPath, 'default_locale' => $this->getContainer()->getParameter('kernel.default_locale')));
+            if (!$bundleTransPath) {
+                $bundleTransPath = end($transPaths).'translations';
             }
+
+            $writer->writeTranslations($operation->getResult(), $input->getOption('output-format'), array('path' => $bundleTransPath, 'default_locale' => $this->getContainer()->getParameter('kernel.default_locale')));
         }
 
         $output->newLine();

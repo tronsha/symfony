@@ -18,7 +18,6 @@ use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\Extension\Validator\Constraints\Form;
 use Symfony\Component\Form\Extension\Validator\Constraints\FormValidator;
 use Symfony\Component\Form\SubmitButtonBuilder;
-use Symfony\Component\Validator\Context\ExecutionContextInterface;
 use Symfony\Component\Validator\Constraints\NotNull;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Tests\Constraints\AbstractConstraintValidatorTest;
@@ -124,6 +123,19 @@ class FormValidatorTest extends AbstractConstraintValidatorTest
         $form->setData($object);
 
         $this->expectNoValidate();
+
+        $this->validator->validate($form, new Form());
+
+        $this->assertNoViolation();
+    }
+
+    public function testMissingConstraintIndex()
+    {
+        $object = new \stdClass();
+        $form = new FormBuilder('name', '\stdClass', $this->dispatcher, $this->factory);
+        $form = $form->setData($object)->getForm();
+
+        $this->expectValidateAt(0, 'data', $object, 'Default');
 
         $this->validator->validate($form, new Form());
 

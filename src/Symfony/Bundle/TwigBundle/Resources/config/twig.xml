@@ -46,8 +46,9 @@
         </service>
 
         <service id="twig.cache_warmer" class="%twig.cache_warmer.class%" public="false">
+            <tag name="kernel.cache_warmer" />
             <argument type="service" id="service_container" />
-            <argument type="service" id="templating.finder" />
+            <argument type="service" id="templating.finder" on-invalid="ignore" />
         </service>
 
         <service id="twig.loader.native_filesystem" class="Twig_Loader_Filesystem" public="false">
@@ -126,6 +127,7 @@
 
         <service id="twig.extension.httpfoundation" class="Symfony\Bridge\Twig\Extension\HttpFoundationExtension" public="false">
             <argument type="service" id="request_stack" />
+            <argument type="service" id="router.request_context" on-invalid="ignore" />
         </service>
 
         <service id="twig.extension.form" class="%twig.extension.form.class%" public="false">

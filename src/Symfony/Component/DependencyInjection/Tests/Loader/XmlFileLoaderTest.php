@@ -13,6 +13,7 @@ namespace Symfony\Component\DependencyInjection\Tests\Loader;
 
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
@@ -81,6 +82,19 @@ class XmlFileLoaderTest extends \PHPUnit_Framework_TestCase
 
         $xml = $m->invoke($loader, self::$fixturesPath.'/xml/services1.xml');
         $this->assertInstanceOf('DOMDocument', $xml, '->parseFileToDOM() returns an SimpleXMLElement object');
+    }
+
+    public function testLoadWithExternalEntitiesDisabled()
+    {
+        $disableEntities = libxml_disable_entity_loader(true);
+
+        $containerBuilder = new ContainerBuilder();
+        $loader = new XmlFileLoader($containerBuilder, new FileLocator(self::$fixturesPath.'/xml'));
+        $loader->load('services2.xml');
+
+        libxml_disable_entity_loader($disableEntities);
+
+        $this->assertTrue(count($containerBuilder->getParameterBag()->all()) > 0, 'Parameters can be read from the config file.');
     }
 
     public function testLoadParameters()
@@ -162,7 +176,7 @@ class XmlFileLoaderTest extends \PHPUnit_Framework_TestCase
         $loader = new XmlFileLoader($container, new FileLocator(self::$fixturesPath.'/xml'));
         $loader->load('services5.xml');
         $services = $container->getDefinitions();
-        $this->assertCount(4, $services, '->load() attributes unique ids to anonymous services');
+        $this->assertCount(6, $services, '->load() attributes unique ids to anonymous services');
 
         // anonymous service as an argument
         $args = $services['foo']->getArguments();
@@ -171,6 +185,7 @@ class XmlFileLoaderTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue(isset($services[(string) $args[0]]), '->load() makes a reference to the created ones');
         $inner = $services[(string) $args[0]];
         $this->assertEquals('BarClass', $inner->getClass(), '->load() uses the same configuration as for the anonymous ones');
+        $this->assertFalse($inner->isPublic());
 
         // inner anonymous services
         $args = $inner->getArguments();
@@ -187,7 +202,25 @@ class XmlFileLoaderTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('Symfony\\Component\\DependencyInjection\\Reference', $property, '->load() converts anonymous services to references to "normal" services');
         $this->assertTrue(isset($services[(string) $property]), '->load() makes a reference to the created ones');
         $inner = $services[(string) $property];
-        $this->assertEquals('BazClass', $inner->getClass(), '->load() uses the same configuration as for the anonymous ones');
+        $this->assertEquals('BuzClass', $inner->getClass(), '->load() uses the same configuration as for the anonymous ones');
+        $this->assertFalse($inner->isPublic());
+
+        // "wild" service
+        $service = $container->findTaggedServiceIds('biz_tag');
+        $this->assertCount(1, $service);
+
+        foreach ($service as $id => $tag) {
+            $service = $container->getDefinition($id);
+        }
+        $this->assertEquals('BizClass', $service->getClass(), '->load() uses the same configuration as for the anonymous ones');
+        $this->assertTrue($service->isPublic());
+
+        // anonymous services are shared when using decoration definitions
+        $container->compile();
+        $services = $container->getDefinitions();
+        $fooArgs = $services['foo']->getArguments();
+        $barArgs = $services['bar']->getArguments();
+        $this->assertSame($fooArgs[0], $barArgs[0]);
     }
 
     /**
@@ -266,6 +299,27 @@ class XmlFileLoaderTest extends \PHPUnit_Framework_TestCase
                 $this->assertArrayNotHasKey('an_other_option', $attributes, 'normalization should not be done when an underscore is already found');
             }
         }
+    }
+
+    /**
+     * @expectedException \Symfony\Component\DependencyInjection\Exception\InvalidArgumentException
+     */
+    public function testParseTagsWithoutNameThrowsException()
+    {
+        $container = new ContainerBuilder();
+        $loader = new XmlFileLoader($container, new FileLocator(self::$fixturesPath.'/xml'));
+        $loader->load('tag_without_name.xml');
+    }
+
+    /**
+     * @expectedException \Symfony\Component\DependencyInjection\Exception\InvalidArgumentException
+     * @expectedExceptionMessageRegExp /The tag name for service ".+" in .* must be a non-empty string/
+     */
+    public function testParseTagWithEmptyNameThrowsException()
+    {
+        $container = new ContainerBuilder();
+        $loader = new XmlFileLoader($container, new FileLocator(self::$fixturesPath.'/xml'));
+        $loader->load('tag_with_empty_name.xml');
     }
 
     public function testConvertDomElementToArray()
@@ -390,9 +444,6 @@ class XmlFileLoaderTest extends \PHPUnit_Framework_TestCase
         }
     }
 
-    /**
-     * @covers Symfony\Component\DependencyInjection\Loader\XmlFileLoader::supports
-     */
     public function testSupports()
     {
         $loader = new XmlFileLoader(new ContainerBuilder(), new FileLocator());

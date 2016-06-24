@@ -49,7 +49,7 @@ class XmlFileLoader extends FileLoader
         $this->parseImports($xml, $path);
 
         // parameters
-        $this->parseParameters($xml, $path);
+        $this->parseParameters($xml);
 
         // extensions
         $this->loadFromExtensions($xml);
@@ -70,9 +70,8 @@ class XmlFileLoader extends FileLoader
      * Parses parameters.
      *
      * @param \DOMDocument $xml
-     * @param string       $file
      */
-    private function parseParameters(\DOMDocument $xml, $file)
+    private function parseParameters(\DOMDocument $xml)
     {
         if ($parameters = $this->getChildren($xml->documentElement, 'parameters')) {
             $this->container->getParameterBag()->add($this->getArgumentsAsPhp($parameters[0], 'parameter'));
@@ -94,8 +93,9 @@ class XmlFileLoader extends FileLoader
             return;
         }
 
+        $defaultDirectory = dirname($file);
         foreach ($imports as $import) {
-            $this->setCurrentDir(dirname($file));
+            $this->setCurrentDir($defaultDirectory);
             $this->import($import->getAttribute('resource'), null, (bool) XmlUtils::phpize($import->getAttribute('ignore-errors')), $file);
         }
     }
@@ -151,7 +151,7 @@ class XmlFileLoader extends FileLoader
         foreach (array('class', 'scope', 'public', 'factory-class', 'factory-method', 'factory-service', 'synthetic', 'lazy', 'abstract') as $key) {
             if ($value = $service->getAttribute($key)) {
                 if (in_array($key, array('factory-class', 'factory-method', 'factory-service'))) {
-                    @trigger_error(sprintf('The "%s" attribute in file "%s" is deprecated since version 2.6 and will be removed in 3.0. Use the "factory" element instead.', $key, $file), E_USER_DEPRECATED);
+                    @trigger_error(sprintf('The "%s" attribute of service "%s" in file "%s" is deprecated since version 2.6 and will be removed in 3.0. Use the "factory" element instead.', $key, (string) $service->getAttribute('id'), $file), E_USER_DEPRECATED);
                 }
                 $method = 'set'.str_replace('-', '', $key);
                 $definition->$method(XmlUtils::phpize($value));
@@ -162,7 +162,7 @@ class XmlFileLoader extends FileLoader
             $triggerDeprecation = 'request' !== (string) $service->getAttribute('id');
 
             if ($triggerDeprecation) {
-                @trigger_error(sprintf('The "synchronized" attribute in file "%s" is deprecated since version 2.7 and will be removed in 3.0.', $file), E_USER_DEPRECATED);
+                @trigger_error(sprintf('The "synchronized" attribute of service "%s" in file "%s" is deprecated since version 2.7 and will be removed in 3.0.', (string) $service->getAttribute('id'), $file), E_USER_DEPRECATED);
             }
 
             $definition->setSynchronized(XmlUtils::phpize($value), $triggerDeprecation);
@@ -231,6 +231,10 @@ class XmlFileLoader extends FileLoader
                 $parameters[$name] = XmlUtils::phpize($node->nodeValue);
             }
 
+            if ('' === $tag->getAttribute('name')) {
+                throw new InvalidArgumentException(sprintf('The tag name for service "%s" in %s must be a non-empty string.', (string) $service->getAttribute('id'), $file));
+            }
+
             $definition->addTag($tag->getAttribute('name'), $parameters);
         }
 
@@ -288,6 +292,10 @@ class XmlFileLoader extends FileLoader
                 if ($services = $this->getChildren($node, 'service')) {
                     $definitions[$id] = array($services[0], $file, false);
                     $services[0]->setAttribute('id', $id);
+
+                    // anonymous services are always private
+                    // we could not use the constant false here, because of XML parsing
+                    $services[0]->setAttribute('public', 'false');
                 }
             }
         }
@@ -298,11 +306,7 @@ class XmlFileLoader extends FileLoader
                 // give it a unique name
                 $id = sprintf('%s_%d', hash('sha256', $file), ++$count);
                 $node->setAttribute('id', $id);
-
-                if ($services = $this->getChildren($node, 'service')) {
-                    $definitions[$id] = array($node, $file, true);
-                    $services[0]->setAttribute('id', $id);
-                }
+                $definitions[$id] = array($node, $file, true);
             }
         }
 
@@ -310,10 +314,6 @@ class XmlFileLoader extends FileLoader
         krsort($definitions);
         foreach ($definitions as $id => $def) {
             list($domElement, $file, $wild) = $def;
-
-            // anonymous services are always private
-            // we could not use the constant false here, because of XML parsing
-            $domElement->setAttribute('public', 'false');
 
             if (null !== $definition = $this->parseDefinition($domElement, $file)) {
                 $this->container->setDefinition($id, $definition);
@@ -484,7 +484,9 @@ $imports
 EOF
         ;
 
+        $disableEntities = libxml_disable_entity_loader(false);
         $valid = @$dom->schemaValidateSource($source);
+        libxml_disable_entity_loader($disableEntities);
 
         foreach ($tmpfiles as $tmpfile) {
             @unlink($tmpfile);

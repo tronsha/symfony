@@ -77,7 +77,7 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
 
             $this->assertEquals(E_NOTICE, $exception->getSeverity());
             $this->assertEquals(__FILE__, $exception->getFile());
-            $this->assertRegexp('/^Notice: Undefined variable: (foo|bar)/', $exception->getMessage());
+            $this->assertRegExp('/^Notice: Undefined variable: (foo|bar)/', $exception->getMessage());
             $this->assertArrayHasKey('foobar', $exception->getContext());
 
             $trace = $exception->getTrace();
@@ -268,6 +268,28 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
         }
     }
 
+    public function testHandleDeprecation()
+    {
+        $that = $this;
+        $logArgCheck = function ($level, $message, $context) use ($that) {
+            $that->assertEquals(LogLevel::INFO, $level);
+            $that->assertArrayHasKey('level', $context);
+            $that->assertEquals(E_RECOVERABLE_ERROR | E_USER_ERROR | E_DEPRECATED | E_USER_DEPRECATED, $context['level']);
+            $that->assertArrayHasKey('stack', $context);
+        };
+
+        $logger = $this->getMock('Psr\Log\LoggerInterface');
+        $logger
+            ->expects($this->once())
+            ->method('log')
+            ->will($this->returnCallback($logArgCheck))
+        ;
+
+        $handler = new ErrorHandler();
+        $handler->setDefaultLogger($logger);
+        @$handler->handleError(E_USER_DEPRECATED, 'Foo deprecation', __FILE__, __LINE__, array());
+    }
+
     public function testHandleException()
     {
         try {
@@ -389,6 +411,24 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
 
             throw $e;
         }
+    }
+
+    /**
+     * @requires PHP 7
+     */
+    public function testHandleErrorException()
+    {
+        $exception = new \Error("Class 'Foo' not found");
+
+        $handler = new ErrorHandler();
+        $handler->setExceptionHandler(function () use (&$args) {
+            $args = func_get_args();
+        });
+
+        $handler->handleException($exception);
+
+        $this->assertInstanceOf('Symfony\Component\Debug\Exception\ClassNotFoundException', $args[0]);
+        $this->assertStringStartsWith("Attempted to load class \"Foo\" from the global namespace.\nDid you forget a \"use\" statement", $args[0]->getMessage());
     }
 
     public function testHandleFatalErrorOnHHVM()

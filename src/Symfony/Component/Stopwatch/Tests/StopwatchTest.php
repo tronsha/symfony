@@ -17,6 +17,8 @@ use Symfony\Component\Stopwatch\Stopwatch;
  * StopwatchTest.
  *
  * @author Fabien Potencier <fabien@symfony.com>
+ *
+ * @group time-sensitive
  */
 class StopwatchTest extends \PHPUnit_Framework_TestCase
 {

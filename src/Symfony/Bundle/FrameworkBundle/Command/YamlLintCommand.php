@@ -105,9 +105,9 @@ EOF
 
     private function validate($content, $file = null)
     {
-        $this->parser = new Parser();
+        $parser = new Parser();
         try {
-            $this->parser->parse($content);
+            $parser->parse($content);
         } catch (ParseException $e) {
             return array('file' => $file, 'valid' => false, 'message' => $e->getMessage());
         }
@@ -135,7 +135,7 @@ EOF
             if ($info['valid'] && $output->isVerbose()) {
                 $output->writeln('<info>OK</info>'.($info['file'] ? sprintf(' in %s', $info['file']) : ''));
             } elseif (!$info['valid']) {
-                $errors++;
+                ++$errors;
                 $output->writeln(sprintf('<error>KO</error> in %s', $info['file']));
                 $output->writeln(sprintf('<error>>> %s</error>', $info['message']));
             }
@@ -153,7 +153,7 @@ EOF
         array_walk($filesInfo, function (&$v) use (&$errors) {
             $v['file'] = (string) $v['file'];
             if (!$v['valid']) {
-                $errors++;
+                ++$errors;
             }
         });
 

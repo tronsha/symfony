@@ -128,4 +128,39 @@ class FormHelperDivLayoutTest extends AbstractDivLayoutTest
             array(array('TestBundle:Parent'), array('TestBundle:Child')),
         );
     }
+
+    public function testRange()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testRangeWithMinMaxValues()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testLabelWithoutTranslationOnButton()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testSingleChoiceWithPlaceholderWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testSingleChoiceExpandedWithPlaceholderWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testButtonlabelWithoutTranslation()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
+
+    public function testAttributesNotTranslatedWhenTranslationDomainIsFalse()
+    {
+        // No-op for forward compatibility with AbstractLayoutTest 2.8
+    }
 }

@@ -112,10 +112,10 @@ class DebugClassLoaderTest extends \PHPUnit_Framework_TestCase
             restore_exception_handler();
             $this->assertStringStartsWith(__FILE__, $exception->getFile());
             if (PHP_VERSION_ID < 70000) {
-                $this->assertRegexp('/^Runtime Notice: Declaration/', $exception->getMessage());
+                $this->assertRegExp('/^Runtime Notice: Declaration/', $exception->getMessage());
                 $this->assertEquals(E_STRICT, $exception->getSeverity());
             } else {
-                $this->assertRegexp('/^Warning: Declaration/', $exception->getMessage());
+                $this->assertRegExp('/^Warning: Declaration/', $exception->getMessage());
                 $this->assertEquals(E_WARNING, $exception->getSeverity());
             }
         } catch (\Exception $exception) {
@@ -136,7 +136,7 @@ class DebugClassLoaderTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @expectedException \RuntimeException
-     * @expectedExceptionMessage Case mismatch between class and source file names
+     * @expectedExceptionMessage Case mismatch between class and real file names
      */
     public function testFileCaseMismatch()
     {
@@ -175,7 +175,7 @@ class DebugClassLoaderTest extends \PHPUnit_Framework_TestCase
      */
     public function testDeprecatedSuper($class, $super, $type)
     {
-        set_error_handler('var_dump', 0);
+        set_error_handler(function () { return false; });
         $e = error_reporting(0);
         trigger_error('', E_USER_DEPRECATED);
 
@@ -205,7 +205,7 @@ class DebugClassLoaderTest extends \PHPUnit_Framework_TestCase
 
     public function testDeprecatedSuperInSameNamespace()
     {
-        set_error_handler('var_dump', 0);
+        set_error_handler(function () { return false; });
         $e = error_reporting(0);
         trigger_error('', E_USER_NOTICE);
 
@@ -231,7 +231,7 @@ class DebugClassLoaderTest extends \PHPUnit_Framework_TestCase
             $this->markTestSkipped('PHP7 already prevents using reserved names.');
         }
 
-        set_error_handler('var_dump', 0);
+        set_error_handler(function () { return false; });
         $e = error_reporting(0);
         trigger_error('', E_USER_NOTICE);
 
