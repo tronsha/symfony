@@ -13,7 +13,6 @@ namespace Symfony\Component\HttpFoundation\Session\Storage;
 
 use Symfony\Component\HttpFoundation\Session\SessionBagInterface;
 use Symfony\Component\HttpFoundation\Session\Storage\Handler\NativeSessionHandler;
-use Symfony\Component\HttpFoundation\Session\Storage\Proxy\NativeProxy;
 use Symfony\Component\HttpFoundation\Session\Storage\Proxy\AbstractProxy;
 use Symfony\Component\HttpFoundation\Session\Storage\Proxy\SessionHandlerProxy;
 
@@ -65,7 +64,7 @@ class NativeSessionStorage implements SessionStorageInterface
      * ("auto_start", is not supported as it tells PHP to start a session before
      * PHP starts to execute user-land code. Setting during runtime has no effect).
      *
-     * cache_limiter, "nocache" (use "0" to prevent headers from being sent entirely).
+     * cache_limiter, "" (use "0" to prevent headers from being sent entirely).
      * cookie_domain, ""
      * cookie_httponly, ""
      * cookie_lifetime, "0"
@@ -182,6 +181,11 @@ class NativeSessionStorage implements SessionStorageInterface
      */
     public function regenerate($destroy = false, $lifetime = null)
     {
+        // Cannot regenerate the session ID for non-active sessions.
+        if (\PHP_SESSION_ACTIVE !== session_status()) {
+            return false;
+        }
+
         if (null !== $lifetime) {
             ini_set('session.cookie_lifetime', $lifetime);
         }
@@ -190,7 +194,13 @@ class NativeSessionStorage implements SessionStorageInterface
             $this->metadataBag->stampNew();
         }
 
-        return session_regenerate_id($destroy);
+        $isRegenerated = session_regenerate_id($destroy);
+
+        // The reference to $_SESSION in session bags is lost in PHP7 and we need to re-create it.
+        // @see https://bugs.php.net/bug.php?id=70013
+        $this->loadSession();
+
+        return $isRegenerated;
     }
 
     /**
@@ -226,6 +236,10 @@ class NativeSessionStorage implements SessionStorageInterface
      */
     public function registerBag(SessionBagInterface $bag)
     {
+        if ($this->started) {
+            throw new \LogicException('Cannot register a bag when the session is already started.');
+        }
+
         $this->bags[$bag->getName()] = $bag;
     }
 
@@ -317,7 +331,7 @@ class NativeSessionStorage implements SessionStorageInterface
      * session.save_handler and session.save_path e.g.
      *
      *     ini_set('session.save_handler', 'files');
-     *     ini_set('session.save_path', /tmp');
+     *     ini_set('session.save_path', '/tmp');
      *
      * or pass in a NativeSessionHandler instance which configures session.save_handler in the
      * constructor, for a template see NativeFileSessionHandler or use handlers in

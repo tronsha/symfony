@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Form\Tests;
 
+use Symfony\Bridge\PhpUnit\ErrorAssert;
 use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
@@ -315,7 +316,9 @@ class SimpleFormTest extends AbstractFormTest
 
     public function testNotValidIfNotSubmitted()
     {
-        $this->assertFalse($this->form->isValid());
+        ErrorAssert::assertDeprecationsAreTriggered(array('Call Form::isValid() with an unsubmitted form'), function () {
+            $this->assertFalse($this->form->isValid());
+        });
     }
 
     public function testNotValidIfErrors()
@@ -732,16 +735,6 @@ class SimpleFormTest extends AbstractFormTest
         $this->assertSame($view, $form->createView($parentView));
     }
 
-    /**
-     * @group legacy
-     */
-    public function testGetErrorsAsString()
-    {
-        $this->form->addError(new FormError('Error!'));
-
-        $this->assertEquals("ERROR: Error!\n", $this->form->getErrorsAsString());
-    }
-
     public function testFormCanHaveEmptyName()
     {
         $form = $this->getBuilder('')->getForm();
@@ -839,19 +832,19 @@ class SimpleFormTest extends AbstractFormTest
         $this->assertEquals(new PropertyPath('[name]'), $form->getPropertyPath());
     }
 
-    /**
-     * @expectedException \Symfony\Component\Form\Exception\LogicException
-     */
-    public function testViewDataMustNotBeObjectIfDataClassIsNull()
+    public function testViewDataMayBeObjectIfDataClassIsNull()
     {
+        $object = new \stdClass();
         $config = new FormConfigBuilder('name', null, $this->dispatcher);
         $config->addViewTransformer(new FixedDataTransformer(array(
             '' => '',
-            'foo' => new \stdClass(),
+            'foo' => $object,
         )));
         $form = new Form($config);
 
         $form->setData('foo');
+
+        $this->assertSame($object, $form->getViewData());
     }
 
     public function testViewDataMayBeArrayAccessIfDataClassIsNull()

@@ -10,8 +10,8 @@ UPGRADE FROM 2.x to 3.0
    | -------- | ---
    | `registerNamespaces()` | `addPrefixes()`
    | `registerPrefixes()` | `addPrefixes()`
-   | `registerNamespaces()` | `addPrefix()`
-   | `registerPrefixes()` | `addPrefix()`
+   | `registerNamespace()` | `addPrefix()`
+   | `registerPrefix()` | `addPrefix()`
    | `getNamespaces()` | `getPrefixes()`
    | `getNamespaceFallbacks()` | `getFallbackDirs()`
    | `getPrefixFallbacks()` | `getFallbackDirs()`
@@ -19,6 +19,16 @@ UPGRADE FROM 2.x to 3.0
  * The `DebugUniversalClassLoader` class has been removed in favor of
    `DebugClassLoader`. The difference is that the constructor now takes a
    loader to wrap.
+
+### Config
+
+ * `\Symfony\Component\Config\Resource\ResourceInterface::isFresh()` has been removed. Also,
+   cache validation through this method (which was still supported in 2.8 for BC) does no longer
+   work because the `\Symfony\Component\Config\Resource\BCResourceInterfaceChecker` helper class
+   has been removed as well.
+
+ * The `__toString()` method of the `\Symfony\Component\Config\ConfigCache` class
+   was removed in favor of the new `getPath()` method.
 
 ### Console
 
@@ -94,6 +104,81 @@ UPGRADE FROM 2.x to 3.0
 
 ### DependencyInjection
 
+ * The method `remove` was added to `Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface`.
+
+ * The concept of scopes was removed, the removed methods are:
+
+    - `Symfony\Component\DependencyInjection\ContainerBuilder::getScopes()`
+    - `Symfony\Component\DependencyInjection\ContainerBuilder::getScopeChildren()`
+    - `Symfony\Component\DependencyInjection\ContainerInterface::enterScope()`
+    - `Symfony\Component\DependencyInjection\ContainerInterface::leaveScope()`
+    - `Symfony\Component\DependencyInjection\ContainerInterface::addScope()`
+    - `Symfony\Component\DependencyInjection\ContainerInterface::hasScope()`
+    - `Symfony\Component\DependencyInjection\ContainerInterface::isScopeActive()`
+    - `Symfony\Component\DependencyInjection\Definition::setScope()`
+    - `Symfony\Component\DependencyInjection\Definition::getScope()`
+    - `Symfony\Component\DependencyInjection\Reference::isStrict()`
+
+  Also, the `$scope` and `$strict` parameters of `Symfony\Component\DependencyInjection\ContainerInterface::set()`
+  and `Symfony\Component\DependencyInjection\Reference` respectively were removed.
+
+ * A new `shared` flag has been added to the service definition
+   in replacement of the `prototype` scope.
+
+   Before:
+
+   ```php
+   use Symfony\Component\DependencyInjection\ContainerBuilder;
+
+   $container = new ContainerBuilder();
+   $container
+       ->register('foo', 'stdClass')
+       ->setScope(ContainerBuilder::SCOPE_PROTOTYPE)
+   ;
+   ```
+
+   ```yml
+   services:
+       foo:
+           class: stdClass
+           scope: prototype
+   ```
+
+   ```xml
+   <services>
+       <service id="foo" class="stdClass" scope="prototype" />
+   </services>
+   ```
+
+   After:
+
+   ```php
+   use Symfony\Component\DependencyInjection\ContainerBuilder;
+
+   $container = new ContainerBuilder();
+   $container
+       ->register('foo', 'stdClass')
+       ->setShared(false)
+   ;
+   ```
+
+   ```yml
+   services:
+       foo:
+           class: stdClass
+           shared: false
+   ```
+
+   ```xml
+   <services>
+       <service id="foo" class="stdClass" shared="false" />
+   </services>
+   ```
+
+ * `Symfony\Component\DependencyInjection\ContainerAware` was removed, use
+   `Symfony\Component\DependencyInjection\ContainerAwareTrait` or implement
+   `Symfony\Component\DependencyInjection\ContainerAwareInterface` manually
+
  * The methods `Definition::setFactoryClass()`,
    `Definition::setFactoryMethod()`, and `Definition::setFactoryService()` have
    been removed in favor of `Definition::setFactory()`. Services defined using
@@ -103,19 +188,232 @@ UPGRADE FROM 2.x to 3.0
    removed: `ContainerBuilder::synchronize()`, `Definition::isSynchronized()`,
    and `Definition::setSynchronized()`.
 
+### DomCrawler
+
+ * The interface of the `Symfony\Component\DomCrawler\Crawler` changed. It does no longer implement `\Iterator` but `\IteratorAggregate`. If you rely on methods of the `\Iterator` interface, call the `getIterator` method of the `\IteratorAggregate` interface before. No changes are required in a `\Traversable`-aware control structure, such as `foreach`.
+
+   Before:
+
+   ```php
+   $crawler->current();
+   ```
+
+   After:
+
+   ```php
+   $crawler->getIterator()->current();
+   ```
+
+### DoctrineBridge
+
+ * The `property` option of `DoctrineType` was removed in favor of the `choice_label` option.
+
+ * The `loader` option of `DoctrineType` was removed. You now have to override the `getLoader()`
+   method in your custom type.
+
+ * The `Symfony\Bridge\Doctrine\Form\ChoiceList\EntityChoiceList` was removed in favor
+   of `Symfony\Bridge\Doctrine\Form\ChoiceList\DoctrineChoiceLoader`.
+
+ * Passing a query builder closure to `ORMQueryBuilderLoader` is not supported anymore.
+   You should pass resolved query builders only.
+
+   Consequently, the arguments `$manager` and `$class` of `ORMQueryBuilderLoader`
+   have been removed as well.
+
+   Note that the `query_builder` option of `DoctrineType` *does* support
+   closures, but the closure is now resolved in the type instead of in the
+   loader.
+
 ### EventDispatcher
 
+ * The method `getListenerPriority($eventName, $listener)` has been added to the
+   `EventDispatcherInterface`.
  * The interface `Symfony\Component\EventDispatcher\Debug\TraceableEventDispatcherInterface`
    extends `Symfony\Component\EventDispatcher\EventDispatcherInterface`.
 
 ### Form
+
+ * The `getBlockPrefix()` method was added to the `FormTypeInterface` in replacement of
+   the `getName()` method which has been removed.
+
+ * The `configureOptions()` method was added to the `FormTypeInterface` in replacement
+   of the `setDefaultOptions()` method which has been removed.
+
+ * The `getBlockPrefix()` method was added to the `ResolvedFormTypeInterface` in
+   replacement of the `getName()` method which has been removed.
+
+ * The option `options` of the `CollectionType` has been removed in favor
+   of the `entry_options` option.
+
+ * The `cascade_validation` option was removed. Use the `constraints` option
+   together with the `Valid` constraint instead.
+
+ * Type names were removed. Instead of referencing types by name, you must
+   reference them by their fully-qualified class name (FQCN) instead:
+
+   Before:
+
+   ```php
+   $form = $this->createFormBuilder()
+       ->add('name', 'text')
+       ->add('age', 'integer')
+       ->getForm();
+   ```
+
+   After:
+
+   ```php
+   use Symfony\Component\Form\Extension\Core\Type\IntegerType;
+   use Symfony\Component\Form\Extension\Core\Type\TextType;
+
+   $form = $this->createFormBuilder()
+       ->add('name', TextType::class)
+       ->add('age', IntegerType::class)
+       ->getForm();
+   ```
+
+   If you want to customize the block prefix of a type in Twig, you must now
+   implement `FormTypeInterface::getBlockPrefix()`:
+
+   Before:
+
+   ```php
+   class UserProfileType extends AbstractType
+   {
+       public function getName()
+       {
+           return 'profile';
+       }
+   }
+   ```
+
+   After:
+
+   ```php
+   class UserProfileType extends AbstractType
+   {
+       public function getBlockPrefix()
+       {
+           return 'profile';
+       }
+   }
+   ```
+
+   If you don't customize `getBlockPrefix()`, it defaults to the class name
+   without "Type" suffix in underscore notation (here: "user_profile").
+
+   Type extension must return the fully-qualified class name of the extended
+   type from `FormTypeExtensionInterface::getExtendedType()` now.
+
+   Before:
+
+   ```php
+   class MyTypeExtension extends AbstractTypeExtension
+   {
+       public function getExtendedType()
+       {
+           return 'form';
+       }
+   }
+   ```
+
+   After:
+
+   ```php
+   use Symfony\Component\Form\Extension\Core\Type\FormType;
+
+   class MyTypeExtension extends AbstractTypeExtension
+   {
+       public function getExtendedType()
+       {
+           return FormType::class;
+       }
+   }
+   ```
+
+ * The `FormTypeInterface::getName()` method was removed.
+
+ * Returning type instances from `FormTypeInterface::getParent()` is not
+   supported anymore. Return the fully-qualified class name of the parent
+   type class instead.
+
+   Before:
+
+   ```php
+   class MyType
+   {
+       public function getParent()
+       {
+           return new ParentType();
+       }
+   }
+   ```
+
+   After:
+
+   ```php
+   class MyType
+   {
+       public function getParent()
+       {
+           return ParentType::class;
+       }
+   }
+   ```
+
+ * The option `type` of the `CollectionType` has been removed in favor of
+   the `entry_type` option. The value for the `entry_type` option must be
+   the fully-qualified class name (FQCN).
+
+ * Passing type instances to `Form::add()`, `FormBuilder::add()` and the
+   `FormFactory::create*()` methods is not supported anymore. Pass the
+   fully-qualified class name of the type instead.
+
+   Before:
+
+   ```php
+   $form = $this->createForm(new MyType());
+   ```
+
+   After:
+
+   ```php
+   $form = $this->createForm(MyType::class);
+   ```
+
+ * The alias option of the `form.type_extension` tag was removed in favor of
+   the `extended_type`/`extended-type` option.
+
+   Before:
+   ```xml
+   <service id="app.type_extension" class="Vendor\Form\Extension\MyTypeExtension">
+       <tag name="form.type_extension" alias="text" />
+   </service>
+   ```
+
+   After:
+   ```xml
+   <service id="app.type_extension" class="Vendor\Form\Extension\MyTypeExtension">
+       <tag name="form.type_extension" extended-type="Symfony\Component\Form\Extension\Core\Type\TextType" />
+   </service>
+   ```
+
+ * The `max_length` option was removed. Use the `attr` option instead by setting it to
+   an `array` with a `maxlength` key.
+
+ * The `ChoiceToBooleanArrayTransformer`, `ChoicesToBooleanArrayTransformer`,
+   `FixRadioInputListener`, and `FixCheckboxInputListener` classes were removed.
+
+ * The `choice_list` option of `ChoiceType` was removed.
 
  * The option "precision" was renamed to "scale".
 
    Before:
 
    ```php
-   $builder->add('length', 'number', array(
+   use Symfony\Component\Form\Extension\Core\Type\NumberType;
+
+   $builder->add('length', NumberType::class, array(
       'precision' => 3,
    ));
    ```
@@ -123,8 +421,32 @@ UPGRADE FROM 2.x to 3.0
    After:
 
    ```php
-   $builder->add('length', 'number', array(
+   use Symfony\Component\Form\Extension\Core\Type\NumberType;
+
+   $builder->add('length', NumberType::class, array(
       'scale' => 3,
+   ));
+   ```
+
+ * The option "`virtual`" was renamed to "`inherit_data`".
+
+   Before:
+
+   ```php
+   use Symfony\Component\Form\Extension\Core\Type\FormType;
+
+   $builder->add('address', FormType::class, array(
+       'virtual' => true,
+   ));
+   ```
+
+   After:
+
+   ```php
+   use Symfony\Component\Form\Extension\Core\Type\FormType;
+
+   $builder->add('address', FormType::class, array(
+       'inherit_data' => true,
    ));
    ```
 
@@ -209,24 +531,6 @@ UPGRADE FROM 2.x to 3.0
    });
    ```
 
- * The option "`virtual`" was renamed to "`inherit_data`".
-
-   Before:
-
-   ```php
-   $builder->add('address', 'form', array(
-       'virtual' => true,
-   ));
-   ```
-
-   After:
-
-   ```php
-   $builder->add('address', 'form', array(
-       'inherit_data' => true,
-   ));
-   ```
-
  * The class `VirtualFormAwareIterator` was renamed to `InheritDataAwareIterator`.
 
    Before:
@@ -269,17 +573,23 @@ UPGRADE FROM 2.x to 3.0
    }
    ```
 
+ * The option "options" of the CollectionType has been renamed to "entry_options".
+
+ * The option "type" of the CollectionType has been renamed to "entry_type".
+   As a value for the option you must provide the fully-qualified class name (FQCN)
+   now as well.
+
  * The `FormIntegrationTestCase` and `FormPerformanceTestCase` classes were moved form the `Symfony\Component\Form\Tests` namespace to the `Symfony\Component\Form\Test` namespace.
 
  * The constants `ROUND_HALFEVEN`, `ROUND_HALFUP` and `ROUND_HALFDOWN` in class
    `NumberToLocalizedStringTransformer` were renamed to `ROUND_HALF_EVEN`,
    `ROUND_HALF_UP` and `ROUND_HALF_DOWN`.
 
- * The methods `ChoiceListInterface::getIndicesForChoices()` and
-   `ChoiceListInterface::getIndicesForValues()` were removed. No direct
-   replacement exists, although in most cases
-   `ChoiceListInterface::getChoicesForValues()` and
-   `ChoiceListInterface::getValuesForChoices()` should be sufficient.
+ * The `Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceListInterface` was
+   removed in favor of `Symfony\Component\Form\ChoiceList\ChoiceListInterface`.
+
+ * `Symfony\Component\Form\Extension\Core\View\ChoiceView` was removed in favor of
+   `Symfony\Component\Form\ChoiceList\View\ChoiceView`.
 
  * The interface `Symfony\Component\Form\Extension\Csrf\CsrfProvider\CsrfProviderInterface`
    and all of its implementations were removed. Use the new interface
@@ -304,9 +614,23 @@ UPGRADE FROM 2.x to 3.0
    echo $form->getErrors(true, false);
    ```
 
-   ```php
-   echo $form->getErrors(true, false);
-   ```
+ * The `Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceList` class has been removed in
+   favor of `Symfony\Component\Form\ChoiceList\ArrayChoiceList`.
+
+ * The `Symfony\Component\Form\Extension\Core\ChoiceList\LazyChoiceList` class has been removed in
+   favor of `Symfony\Component\Form\ChoiceList\LazyChoiceList`.
+
+ * The `Symfony\Component\Form\Extension\Core\ChoiceList\ObjectChoiceList` class has been removed in
+   favor of `Symfony\Component\Form\ChoiceList\ArrayChoiceList`.
+
+ * The `Symfony\Component\Form\Extension\Core\ChoiceList\SimpleChoiceList` class has been removed in
+   favor of `Symfony\Component\Form\ChoiceList\ArrayChoiceList`.
+
+ * The `TimezoneType::getTimezones()` method was removed. You should not use
+   this method.
+
+ * The `Symfony\Component\Form\ChoiceList\ArrayKeyChoiceList` class has been removed in
+   favor of `Symfony\Component\Form\ChoiceList\ArrayChoiceList`.
 
 ### FrameworkBundle
 
@@ -314,6 +638,11 @@ UPGRADE FROM 2.x to 3.0
    and `yaml:lint` commands have been deprecated since Symfony 2.7 and will
    be removed in Symfony 3.0. Use the `debug:config`, `debug:container`,
    `debug:router`, `debug:translation` and `lint:yaml` commands instead.
+
+ * The base `Controller`class is now abstract.
+
+ * The visibility of all methods of the base `Controller` class has been changed from
+   `public` to `protected`.
 
  * The `getRequest` method of the base `Controller` class has been deprecated
    since Symfony 2.4 and must be therefore removed in 3.0. The only reliable
@@ -350,53 +679,44 @@ UPGRADE FROM 2.x to 3.0
    }
    ```
 
- * The `request` service was removed. You must inject the `request_stack`
-   service instead.
-
- * The `templating.helper.assets` was removed in Symfony 3.0. You should
-   use the `assets.package` service instead.
+ * In Symfony 2.7 a small BC break was introduced with the new choices_as_values
+   option. In order to have the choice values populated to the html value attribute
+   you had to define the choice_value option. This is now not any more needed.
 
    Before:
 
    ```php
-   use Symfony\Component\Templating\Helper\CoreAssetsHelper;
-
-   class DemoService
-   {
-       private $assetsHelper;
-
-       public function __construct(CoreAssetsHelper $assetsHelper)
-       {
-           $this->assetsHelper = $assetsHelper;
-       }
-
-       public function testMethod()
-       {
-           return $this->assetsHelper->getUrl('thumbnail.png', null, $this->assetsHelper->getVersion());
-       }
-   }
+   $form->add('status', 'choice', array(
+       'choices' => array(
+           'Enabled' => Status::ENABLED,
+           'Disabled' => Status::DISABLED,
+           'Ignored' => Status::IGNORED,
+       ),
+       // choices_as_values defaults to true in Symfony 3.0
+       // and setting it to anything else is deprecated as of 3.0
+       'choices_as_values' => true,
+       // important if you rely on your option value attribute (e.g. for JavaScript)
+       // this will keep the same functionality as before
+       'choice_value' => function ($choice) {
+           return $choice;
+       },
+   ));
    ```
 
    After:
 
    ```php
-   use Symfony\Component\Asset\Packages;
-
-   class DemoService
-   {
-       private $assetPackages;
-
-       public function __construct(Packages $assetPackages)
-       {
-           $this->assetPackages = $assetPackages;
-       }
-
-       public function testMethod()
-       {
-           return $this->assetPackages->getUrl('thumbnail.png').$this->assetPackages->getVersion();
-       }
-   }
+   $form->add('status', ChoiceType::class, array(
+       'choices' => array(
+           'Enabled' => Status::ENABLED,
+           'Disabled' => Status::DISABLED,
+           'Ignored' => Status::IGNORED,
+       )
+   ));
    ```
+
+ * The `request` service was removed. You must inject the `request_stack`
+   service instead.
 
  * The `enctype` method of the `form` helper was removed. You should use the
    new method `start` instead.
@@ -466,6 +786,27 @@ UPGRADE FROM 2.x to 3.0
    `Symfony\Component\Form\Extension\Csrf\CsrfProvider\CsrfProviderInterface`
    interface.
    The `security.csrf.token_manager` should be used instead.
+
+ * The `validator.mapping.cache.apc` service has been removed in favor of the `validator.mapping.cache.doctrine.apc` one.
+
+ * The ability to pass `apc` as the `framework.validation.cache` configuration key value has been removed.
+   Use `validator.mapping.cache.doctrine.apc` instead:
+
+   Before:
+
+   ```yaml
+   framework:
+       validation:
+           cache: apc
+   ```
+
+   After:
+
+   ```yaml
+   framework:
+       validation:
+           cache: validator.mapping.cache.doctrine.apc
+   ```
 
 ### HttpKernel
 
@@ -542,7 +883,7 @@ UPGRADE FROM 2.x to 3.0
 
  * Some route settings have been renamed:
 
-     * The `pattern` setting for a route has been deprecated in favor of `path`
+     * The `pattern` setting has been removed in favor of `path`
      * The `_scheme` and `_method` requirements have been moved to the `schemes` and `methods` settings
 
    Before:
@@ -595,9 +936,232 @@ UPGRADE FROM 2.x to 3.0
    the performance gains were minimal and it's hard to replicate the behaviour
    of PHP implementation.
 
+ * The `getMatcherDumperInstance()` and `getGeneratorDumperInstance()` methods in the
+   `Symfony\Component\Routing\Router` have been changed from `public` to `protected`.
+
+ * Use the constants defined in the UrlGeneratorInterface for the $referenceType argument of the UrlGeneratorInterface::generate method.
+
+   Before:
+
+   ```php
+   // url generated in controller
+   $this->generateUrl('blog_show', array('slug' => 'my-blog-post'), true);
+
+   // url generated in @router service
+   $router->generate('blog_show', array('slug' => 'my-blog-post'), true);
+   ```
+
+   After:
+
+   ```php
+   use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+
+   // url generated in controller
+   $this->generateUrl('blog_show', array('slug' => 'my-blog-post'), UrlGeneratorInterface::ABSOLUTE_URL);
+
+   // url generated in @router service
+   $router->generate('blog_show', array('slug' => 'my-blog-post'), UrlGeneratorInterface::ABSOLUTE_URL);
+   ```
+
 ### Security
 
+ * The `vote()` method from the `VoterInterface` was changed to now accept arbitrary
+   types and not only objects. You can rely on the new abstract `Voter` class introduced
+   in 2.8 to ease integrating your own voters.
+
+ * The `AbstractVoter` class was removed in favor of the new `Voter` class.
+
  * The `Resources/` directory was moved to `Core/Resources/`
+
+ * The `key` settings of `anonymous`, `remember_me` and `http_digest` are
+   renamed to `secret`.
+
+   Before:
+
+   ```yaml
+   security:
+       # ...
+       firewalls:
+           default:
+               # ...
+               anonymous: { key: "%secret%" }
+               remember_me:
+                   key: "%secret%"
+               http_digest:
+                   key: "%secret%"
+   ```
+
+   ```xml
+   <!-- ... -->
+   <config>
+       <!-- ... -->
+
+       <firewall>
+           <!-- ... -->
+
+           <anonymous key="%secret%"/>
+           <remember-me key="%secret%"/>
+           <http-digest key="%secret%"/>
+       </firewall>
+   </config>
+   ```
+
+   ```php
+   // ...
+   $container->loadFromExtension('security', array(
+       // ...
+       'firewalls' => array(
+           // ...
+           'anonymous' => array('key' => '%secret%'),
+           'remember_me' => array('key' => '%secret%'),
+           'http_digest' => array('key' => '%secret%'),
+       ),
+   ));
+   ```
+
+   After:
+
+   ```yaml
+   security:
+       # ...
+       firewalls:
+           default:
+               # ...
+               anonymous: { secret: "%secret%" }
+               remember_me:
+                   secret: "%secret%"
+               http_digest:
+                   secret: "%secret%"
+   ```
+
+   ```xml
+   <!-- ... -->
+   <config>
+       <!-- ... -->
+
+       <firewall>
+           <!-- ... -->
+
+           <anonymous secret="%secret%"/>
+           <remember-me secret="%secret%"/>
+           <http-digest secret="%secret%"/>
+       </firewall>
+   </config>
+   ```
+
+   ```php
+   // ...
+   $container->loadFromExtension('security', array(
+       // ...
+       'firewalls' => array(
+           // ...
+           'anonymous' => array('secret' => '%secret%'),
+           'remember_me' => array('secret' => '%secret%'),
+           'http_digest' => array('secret' => '%secret%'),
+       ),
+   ));
+  ```
+
+ * The `AbstractVoter` class was removed. Instead, extend the new `Voter` class,
+   introduced in 2.8, and move your voting logic to the to the `supports($attribute, $subject)`
+   and `voteOnAttribute($attribute, $object, TokenInterface $token)` methods.
+
+ * The `vote()` method from the `VoterInterface` was changed to now accept arbitrary
+   types, and not only objects.
+
+ * The `supportsClass` and `supportsAttribute` methods were
+   removed from the `VoterInterface` interface.
+
+   Before:
+
+   ```php
+   class MyVoter extends AbstractVoter
+   {
+       protected function getSupportedAttributes()
+       {
+           return array('CREATE', 'EDIT');
+       }
+
+       protected function getSupportedClasses()
+       {
+           return array('AppBundle\Entity\Post');
+       }
+
+       // ...
+   }
+   ```
+
+   After:
+
+   ```php
+   use Symfony\Component\Security\Core\Authorization\Voter\Voter;
+
+   class MyVoter extends Voter
+   {
+       protected function supports($attribute, $object)
+       {
+           return $object instanceof Post && in_array($attribute, array('CREATE', 'EDIT'));
+       }
+
+       protected function voteOnAttribute($attribute, $object, TokenInterface $token)
+       {
+           // Return true or false
+       }
+   }
+   ```
+
+ * The `AbstractVoter::isGranted()` method has been replaced by `Voter::voteOnAttribute()`.
+
+   Before:
+
+   ```php
+   class MyVoter extends AbstractVoter
+   {
+       protected function isGranted($attribute, $object, $user = null)
+       {
+           return 'EDIT' === $attribute && $user === $object->getAuthor();
+       }
+
+       // ...
+   }
+   ```
+
+   After:
+
+   ```php
+   class MyVoter extends Voter
+   {
+       protected function voteOnAttribute($attribute, $object, TokenInterface $token)
+       {
+           return 'EDIT' === $attribute && $token->getUser() === $object->getAuthor();
+       }
+
+       // ...
+   }
+   ```
+
+ * The `supportsAttribute()` and `supportsClass()` methods of the `AuthenticatedVoter`, `ExpressionVoter`,
+   and `RoleVoter` classes have been removed.
+
+ * The `intention` option was renamed to `csrf_token_id` for all the authentication listeners.
+
+ * The `csrf_provider` option was renamed to `csrf_token_generator` for all the authentication listeners.
+
+### SecurityBundle
+
+ * The `intention` firewall listener setting was renamed to `csrf_token_id`.
+
+ * The `csrf_provider` firewall listener setting was renamed to `csrf_token_generator`.
+
+### Serializer
+
+ * The `setCamelizedAttributes()` method of the
+   `Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer` and
+   `Symfony\Component\Serializer\Normalizer\PropertyNormalizer` classes
+   was removed.
+
+ * The `Symfony\Component\Serializer\Exception\Exception` interface was removed
+   in favor of the new `Symfony\Component\Serializer\Exception\ExceptionInterface`.
 
 ### Translator
 
@@ -638,6 +1202,37 @@ UPGRADE FROM 2.x to 3.0
        }
     }
    ```
+
+ * The method `FileDumper::format()` was removed. You should use
+   `FileDumper::formatCatalogue()` instead.
+
+   Before:
+
+   ```php
+    class CustomDumper extends FileDumper
+    {
+        protected function format(MessageCatalogue $messages, $domain)
+        {
+            ...
+        }
+    }
+   ```
+
+   After:
+
+   ```php
+    class CustomDumper extends FileDumper
+    {
+        public function formatCatalogue(MessageCatalogue $messages, $domain, array $options = array())
+        {
+            ...
+        }
+    }
+   ```
+
+ * The `getMessages()` method of the `Symfony\Component\Translation\Translator`
+   class was removed. You should use the `getCatalogue()` method of the
+   `Symfony\Component\Translation\TranslatorBagInterface`.
 
 ### Twig Bridge
 
@@ -698,10 +1293,17 @@ UPGRADE FROM 2.x to 3.0
 
 ### TwigBundle
 
+ * The `Symfony\Bundle\TwigBundle\TwigDefaultEscapingStrategy` was removed
+   in favor of `Twig_FileExtensionEscapingStrategy`.
+
  * The `twig:debug` command has been deprecated since Symfony 2.7 and will be
    removed in Symfony 3.0. Use the `debug:twig` command instead.
 
 ### Validator
+
+ * The PHP7-incompatible constraints (`Null`, `True`, `False`) and their related
+   validators (`NullValidator`, `TrueValidator`, `FalseValidator`) have been
+   removed in favor of their `Is`-prefixed equivalent.
 
  * The class `Symfony\Component\Validator\Mapping\Cache\ApcCache` has been removed in favor
    of `Symfony\Component\Validator\Mapping\Cache\DoctrineCache`.
@@ -1136,6 +1738,24 @@ UPGRADE FROM 2.x to 3.0
 
 ### Yaml
 
+ * Using a colon in an unquoted mapping value leads to a `ParseException`.
+ * Starting an unquoted string with `@`, `` ` ``, `|`, or `>` leads to a `ParseException`.
+ * When surrounding strings with double-quotes, you must now escape `\` characters. Not
+   escaping those characters (when surrounded by double-quotes) leads to a `ParseException`.
+
+   Before:
+
+   ```yml
+   class: "Foo\Var"
+   ```
+
+   After:
+
+   ```yml
+   class: "Foo\\Var"
+   ```
+
+
  * The ability to pass file names to `Yaml::parse()` has been removed.
 
    Before:
@@ -1149,6 +1769,22 @@ UPGRADE FROM 2.x to 3.0
    ```php
    Yaml::parse(file_get_contents($fileName));
    ```
+
+### WebProfiler
+
+ * The `profiler:import` and `profiler:export` commands have been removed.
+
+ * All the profiler storages different than `FileProfilerStorage` have been
+   removed. The removed classes are:
+
+    - `Symfony\Component\HttpKernel\Profiler\BaseMemcacheProfilerStorage`
+    - `Symfony\Component\HttpKernel\Profiler\MemcachedProfilerStorage`
+    - `Symfony\Component\HttpKernel\Profiler\MemcacheProfilerStorage`
+    - `Symfony\Component\HttpKernel\Profiler\MongoDbProfilerStorage`
+    - `Symfony\Component\HttpKernel\Profiler\MysqlProfilerStorage`
+    - `Symfony\Component\HttpKernel\Profiler\PdoProfilerStorage`
+    - `Symfony\Component\HttpKernel\Profiler\RedisProfilerStorage`
+    - `Symfony\Component\HttpKernel\Profiler\SqliteProfilerStorage`
 
 ### Process
 
@@ -1169,4 +1805,19 @@ UPGRADE FROM 2.x to 3.0
 
 ### HttpFoundation
 
-* `Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface` no longer implements the `IteratorAggregate` interface. Use the `all()` method instead of iterating over the flash bag.
+ * `Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface` no longer implements the `IteratorAggregate` interface. Use the `all()` method instead of iterating over the flash bag.
+
+ * Removed the feature that allowed finding deep items in `ParameterBag::get()`.
+   This may affect you when getting parameters from the `Request` class:
+
+   Before:
+
+   ```php
+   $request->query->get('foo[bar]', null, true);
+   ```
+
+   After:
+
+   ```php
+   $request->query->get('foo')[bar];
+   ```

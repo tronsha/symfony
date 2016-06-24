@@ -76,20 +76,19 @@ interface FormTypeInterface
     public function configureOptions(OptionsResolver $resolver);
 
     /**
-     * Returns the name of the parent type.
+     * Returns the prefix of the template block name for this type.
      *
-     * You can also return a type instance from this method, although doing so
-     * is discouraged because it leads to a performance penalty. The support
-     * for returning type instances may be dropped from future releases.
+     * The block prefix defaults to the underscored short class name with
+     * the "Type" suffix removed (e.g. "UserProfileType" => "user_profile").
      *
-     * @return string|null|FormTypeInterface The name of the parent type if any, null otherwise.
+     * @return string The prefix of the template block name
      */
-    public function getParent();
+    public function getBlockPrefix();
 
     /**
-     * Returns the name of this type.
+     * Returns the name of the parent type.
      *
-     * @return string The name of this type
+     * @return string|null The name of the parent type if any, null otherwise
      */
-    public function getName();
+    public function getParent();
 }

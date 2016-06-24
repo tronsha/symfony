@@ -19,6 +19,7 @@ use Symfony\Component\Serializer\Normalizer\PropertyNormalizer;
 use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Serializer\Tests\Fixtures\GroupDummy;
+use Symfony\Component\Serializer\Tests\Fixtures\MaxDepthDummy;
 use Symfony\Component\Serializer\Tests\Fixtures\PropertyCircularReferenceDummy;
 use Symfony\Component\Serializer\Tests\Fixtures\PropertySiblingHolder;
 
@@ -143,7 +144,7 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals(array(
             'bar' => 'bar',
-        ), $this->normalizer->normalize($obj, null, array('groups' => array('c'))));
+        ), $this->normalizer->normalize($obj, null, array(PropertyNormalizer::GROUPS => array('c'))));
 
         // The PropertyNormalizer is not able to hydrate properties from parent classes
         $this->assertEquals(array(
@@ -151,7 +152,7 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
             'foo' => 'foo',
             'fooBar' => 'fooBar',
             'bar' => 'bar',
-        ), $this->normalizer->normalize($obj, null, array('groups' => array('a', 'c'))));
+        ), $this->normalizer->normalize($obj, null, array(PropertyNormalizer::GROUPS => array('a', 'c'))));
     }
 
     public function testGroupsDenormalize()
@@ -169,7 +170,7 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
             $toNormalize,
             'Symfony\Component\Serializer\Tests\Fixtures\GroupDummy',
             null,
-            array('groups' => array('a'))
+            array(PropertyNormalizer::GROUPS => array('a'))
         );
         $this->assertEquals($obj, $normalized);
 
@@ -179,7 +180,7 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
             $toNormalize,
             'Symfony\Component\Serializer\Tests\Fixtures\GroupDummy',
             null,
-            array('groups' => array('a', 'b'))
+            array(PropertyNormalizer::GROUPS => array('a', 'b'))
         );
         $this->assertEquals($obj, $normalized);
     }
@@ -201,7 +202,7 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
                 'foo_bar' => '@dunglas',
                 'symfony' => '@coopTilleuls',
             ),
-            $this->normalizer->normalize($obj, null, array('groups' => array('name_converter')))
+            $this->normalizer->normalize($obj, null, array(PropertyNormalizer::GROUPS => array('name_converter')))
         );
     }
 
@@ -222,7 +223,7 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
                 'foo_bar' => '@dunglas',
                 'symfony' => '@coopTilleuls',
                 'coop_tilleuls' => 'les-tilleuls.coop',
-            ), 'Symfony\Component\Serializer\Tests\Fixtures\GroupDummy', null, array('groups' => array('name_converter')))
+            ), 'Symfony\Component\Serializer\Tests\Fixtures\GroupDummy', null, array(PropertyNormalizer::GROUPS => array('name_converter')))
         );
     }
 
@@ -338,9 +339,17 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
         );
     }
 
+    public function testDenormalizeShouldIgnoreStaticProperty()
+    {
+        $obj = $this->normalizer->denormalize(array('outOfScope' => true), __NAMESPACE__.'\PropertyDummy');
+
+        $this->assertEquals(new PropertyDummy(), $obj);
+        $this->assertEquals('out_of_scope', PropertyDummy::$outOfScope);
+    }
+
     /**
      * @expectedException \Symfony\Component\Serializer\Exception\LogicException
-     * @expectedExceptionMessage Cannot normalize attribute "bar" because injected serializer is not a normalizer
+     * @expectedExceptionMessage Cannot normalize attribute "bar" because the injected serializer is not a normalizer
      */
     public function testUnableToNormalizeObjectAttribute()
     {
@@ -358,10 +367,52 @@ class PropertyNormalizerTest extends \PHPUnit_Framework_TestCase
     {
         $this->assertFalse($this->normalizer->supportsNormalization(new \ArrayObject()));
     }
+
+    public function testNoStaticPropertySupport()
+    {
+        $this->assertFalse($this->normalizer->supportsNormalization(new StaticPropertyDummy()));
+    }
+
+    public function testMaxDepth()
+    {
+        $classMetadataFactory = new ClassMetadataFactory(new AnnotationLoader(new AnnotationReader()));
+        $this->normalizer = new PropertyNormalizer($classMetadataFactory);
+        $serializer = new Serializer(array($this->normalizer));
+        $this->normalizer->setSerializer($serializer);
+
+        $level1 = new MaxDepthDummy();
+        $level1->foo = 'level1';
+
+        $level2 = new MaxDepthDummy();
+        $level2->foo = 'level2';
+        $level1->child = $level2;
+
+        $level3 = new MaxDepthDummy();
+        $level3->foo = 'level3';
+        $level2->child = $level3;
+
+        $result = $serializer->normalize($level1, null, array(PropertyNormalizer::ENABLE_MAX_DEPTH => true));
+
+        $expected = array(
+            'foo' => 'level1',
+            'child' => array(
+                    'foo' => 'level2',
+                    'child' => array(
+                            'child' => null,
+                            'bar' => null,
+                        ),
+                    'bar' => null,
+                ),
+            'bar' => null,
+        );
+
+        $this->assertEquals($expected, $result);
+    }
 }
 
 class PropertyDummy
 {
+    public static $outOfScope = 'out_of_scope';
     public $foo;
     private $bar;
     protected $camelCase;
@@ -419,4 +470,9 @@ class PropertyCamelizedDummy
     {
         $this->kevinDunglas = $kevinDunglas;
     }
+}
+
+class StaticPropertyDummy
+{
+    private static $property = 'value';
 }

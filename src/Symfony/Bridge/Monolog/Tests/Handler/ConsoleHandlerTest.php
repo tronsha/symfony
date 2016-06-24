@@ -55,12 +55,35 @@ class ConsoleHandlerTest extends \PHPUnit_Framework_TestCase
         $this->assertSame($isHandling, $handler->isHandling(array('level' => $level)),
             '->isHandling returns correct value depending on console verbosity and log level'
         );
+
+        // check that the handler actually outputs the record if it handles it
+        $levelName = Logger::getLevelName($level);
+
+        $realOutput = $this->getMock('Symfony\Component\Console\Output\Output', array('doWrite'));
+        $realOutput->setVerbosity($verbosity);
+        $realOutput
+            ->expects($isHandling ? $this->once() : $this->never())
+            ->method('doWrite')
+            ->with("[2013-05-29 16:21:54] app.$levelName: My info message  \n", false);
+        $handler = new ConsoleHandler($realOutput, true, $map);
+
+        $infoRecord = array(
+            'message' => 'My info message',
+            'context' => array(),
+            'level' => $level,
+            'level_name' => Logger::getLevelName($level),
+            'channel' => 'app',
+            'datetime' => new \DateTime('2013-05-29 16:21:54'),
+            'extra' => array(),
+        );
+        $this->assertFalse($handler->handle($infoRecord), 'The handler finished handling the log.');
     }
 
     public function provideVerbosityMappingTests()
     {
         return array(
-            array(OutputInterface::VERBOSITY_QUIET, Logger::ERROR, false),
+            array(OutputInterface::VERBOSITY_QUIET, Logger::ERROR, true),
+            array(OutputInterface::VERBOSITY_QUIET, Logger::WARNING, false),
             array(OutputInterface::VERBOSITY_NORMAL, Logger::WARNING, true),
             array(OutputInterface::VERBOSITY_NORMAL, Logger::NOTICE, false),
             array(OutputInterface::VERBOSITY_VERBOSE, Logger::NOTICE, true),
@@ -110,7 +133,7 @@ class ConsoleHandlerTest extends \PHPUnit_Framework_TestCase
 
     public function testWritingAndFormatting()
     {
-        $output = $this->getMock('Symfony\Component\Console\Output\ConsoleOutputInterface');
+        $output = $this->getMock('Symfony\Component\Console\Output\OutputInterface');
         $output
             ->expects($this->any())
             ->method('getVerbosity')
@@ -120,19 +143,6 @@ class ConsoleHandlerTest extends \PHPUnit_Framework_TestCase
             ->expects($this->once())
             ->method('write')
             ->with('<info>[2013-05-29 16:21:54] app.INFO:</info> My info message  '."\n")
-        ;
-
-        $errorOutput = $this->getMock('Symfony\Component\Console\Output\OutputInterface');
-        $errorOutput
-            ->expects($this->once())
-            ->method('write')
-            ->with('<error>[2013-05-29 16:21:54] app.ERROR:</error> My error message  '."\n")
-        ;
-
-        $output
-            ->expects($this->any())
-            ->method('getErrorOutput')
-            ->will($this->returnValue($errorOutput))
         ;
 
         $handler = new ConsoleHandler(null, false);
@@ -149,18 +159,6 @@ class ConsoleHandlerTest extends \PHPUnit_Framework_TestCase
         );
 
         $this->assertTrue($handler->handle($infoRecord), 'The handler finished handling the log as bubble is false.');
-
-        $errorRecord = array(
-            'message' => 'My error message',
-            'context' => array(),
-            'level' => Logger::ERROR,
-            'level_name' => Logger::getLevelName(Logger::ERROR),
-            'channel' => 'app',
-            'datetime' => new \DateTime('2013-05-29 16:21:54'),
-            'extra' => array(),
-        );
-
-        $this->assertTrue($handler->handle($errorRecord), 'The handler finished handling the log as bubble is false.');
     }
 
     public function testLogsFromListeners()

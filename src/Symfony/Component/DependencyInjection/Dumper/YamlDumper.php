@@ -24,8 +24,6 @@ use Symfony\Component\ExpressionLanguage\Expression;
  * YamlDumper dumps a service container as a YAML string.
  *
  * @author Fabien Potencier <fabien@symfony.com>
- *
- * @api
  */
 class YamlDumper extends Dumper
 {
@@ -37,8 +35,6 @@ class YamlDumper extends Dumper
      * @param array $options An array of options
      *
      * @return string A YAML string representing of the service container
-     *
-     * @api
      */
     public function dump(array $options = array())
     {
@@ -64,8 +60,12 @@ class YamlDumper extends Dumper
     private function addService($id, $definition)
     {
         $code = "    $id:\n";
-        if ($definition->getClass()) {
-            $code .= sprintf("        class: %s\n", $definition->getClass());
+        if ($class = $definition->getClass()) {
+            if ('\\' === substr($class, 0, 1)) {
+                $class = substr($class, 1);
+            }
+
+            $code .= sprintf("        class: %s\n", $this->dumper->dump($class));
         }
 
         if (!$definition->isPublic()) {
@@ -89,11 +89,27 @@ class YamlDumper extends Dumper
         }
 
         if ($definition->getFile()) {
-            $code .= sprintf("        file: %s\n", $definition->getFile());
+            $code .= sprintf("        file: %s\n", $this->dumper->dump($definition->getFile()));
         }
 
         if ($definition->isSynthetic()) {
             $code .= sprintf("        synthetic: true\n");
+        }
+
+        if ($definition->isDeprecated()) {
+            $code .= sprintf("        deprecated: %s\n", $definition->getDeprecationMessage('%service_id%'));
+        }
+
+        if ($definition->isAutowired()) {
+            $code .= "        autowire: true\n";
+        }
+
+        $autowiringTypesCode = '';
+        foreach ($definition->getAutowiringTypes() as $autowiringType) {
+            $autowiringTypesCode .= sprintf("            - %s\n", $this->dumper->dump($autowiringType));
+        }
+        if ($autowiringTypesCode) {
+            $code .= sprintf("        autowiring_types:\n%s", $autowiringTypesCode);
         }
 
         if ($definition->isLazy()) {
@@ -112,15 +128,18 @@ class YamlDumper extends Dumper
             $code .= sprintf("        calls:\n%s\n", $this->dumper->dump($this->dumpValue($definition->getMethodCalls()), 1, 12));
         }
 
-        if (ContainerInterface::SCOPE_CONTAINER !== $scope = $definition->getScope()) {
-            $code .= sprintf("        scope: %s\n", $scope);
+        if (!$definition->isShared()) {
+            $code .= "        shared: false\n";
         }
 
         if (null !== $decorated = $definition->getDecoratedService()) {
-            list($decorated, $renamedId) = $decorated;
+            list($decorated, $renamedId, $priority) = $decorated;
             $code .= sprintf("        decorates: %s\n", $decorated);
             if (null !== $renamedId) {
                 $code .= sprintf("        decoration_inner_name: %s\n", $renamedId);
+            }
+            if (0 !== $priority) {
+                $code .= sprintf("        decoration_priority: %s\n", $priority);
             }
         }
 
@@ -146,10 +165,10 @@ class YamlDumper extends Dumper
     private function addServiceAlias($alias, $id)
     {
         if ($id->isPublic()) {
-            return sprintf("    %s: @%s\n", $alias, $id);
-        } else {
-            return sprintf("    %s:\n        alias: %s\n        public: false", $alias, $id);
+            return sprintf("    %s: '@%s'\n", $alias, $id);
         }
+
+        return sprintf("    %s:\n        alias: %s\n        public: false", $alias, $id);
     }
 
     /**
@@ -196,7 +215,7 @@ class YamlDumper extends Dumper
     }
 
     /**
-     * Dumps callable to YAML format
+     * Dumps callable to YAML format.
      *
      * @param callable $callable
      *

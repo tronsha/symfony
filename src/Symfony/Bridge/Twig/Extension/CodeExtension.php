@@ -32,7 +32,7 @@ class CodeExtension extends \Twig_Extension
     public function __construct($fileLinkFormat, $rootDir, $charset)
     {
         $this->fileLinkFormat = $fileLinkFormat ?: ini_get('xdebug.file_link_format') ?: get_cfg_var('xdebug.file_link_format');
-        $this->rootDir = str_replace('\\', '/', dirname($rootDir)).'/';
+        $this->rootDir = str_replace('/', DIRECTORY_SEPARATOR, dirname($rootDir)).DIRECTORY_SEPARATOR;
         $this->charset = $charset;
     }
 
@@ -92,8 +92,6 @@ class CodeExtension extends \Twig_Extension
                 $formattedValue = sprintf('<em>object</em>(<abbr title="%s">%s</abbr>)', $item[1], $short);
             } elseif ('array' === $item[0]) {
                 $formattedValue = sprintf('<em>array</em>(%s)', is_array($item[1]) ? $this->formatArgs($item[1]) : $item[1]);
-            } elseif ('string' === $item[0]) {
-                $formattedValue = sprintf("'%s'", htmlspecialchars($item[1], ENT_QUOTES, $this->charset));
             } elseif ('null' === $item[0]) {
                 $formattedValue = '<em>null</em>';
             } elseif ('boolean' === $item[0]) {
@@ -101,7 +99,7 @@ class CodeExtension extends \Twig_Extension
             } elseif ('resource' === $item[0]) {
                 $formattedValue = '<em>resource</em>';
             } else {
-                $formattedValue = str_replace("\n", '', var_export(htmlspecialchars((string) $item[1], ENT_QUOTES, $this->charset), true));
+                $formattedValue = str_replace("\n", '', htmlspecialchars(var_export($item[1], true), ENT_COMPAT | ENT_SUBSTITUTE, $this->charset));
             }
 
             $result[] = is_int($key) ? $formattedValue : sprintf("'%s' => %s", $key, $formattedValue);
@@ -163,18 +161,18 @@ class CodeExtension extends \Twig_Extension
         $file = trim($file);
 
         if (null === $text) {
-            $text = str_replace('\\', '/', $file);
+            $text = str_replace('/', DIRECTORY_SEPARATOR, $file);
             if (0 === strpos($text, $this->rootDir)) {
                 $text = substr($text, strlen($this->rootDir));
-                $text = explode('/', $text, 2);
-                $text = sprintf('<abbr title="%s%2$s">%s</abbr>%s', $this->rootDir, $text[0], isset($text[1]) ? '/'.$text[1] : '');
+                $text = explode(DIRECTORY_SEPARATOR, $text, 2);
+                $text = sprintf('<abbr title="%s%2$s">%s</abbr>%s', $this->rootDir, $text[0], isset($text[1]) ? DIRECTORY_SEPARATOR.$text[1] : '');
             }
         }
 
         $text = "$text at line $line";
 
         if (false !== $link = $this->getFileLink($file, $line)) {
-            $flags = ENT_QUOTES | ENT_SUBSTITUTE;
+            $flags = ENT_COMPAT | ENT_SUBSTITUTE;
 
             return sprintf('<a href="%s" title="Click to open this file" class="file_link">%s</a>', htmlspecialchars($link, $flags, $this->charset), $text);
         }

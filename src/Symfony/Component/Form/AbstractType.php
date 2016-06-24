@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Form;
 
+use Symfony\Component\Form\Util\StringUtil;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
@@ -49,8 +50,16 @@ abstract class AbstractType implements FormTypeInterface
     /**
      * {@inheritdoc}
      */
+    public function getBlockPrefix()
+    {
+        return StringUtil::fqcnToBlockPrefix(get_class($this));
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function getParent()
     {
-        return 'form';
+        return 'Symfony\Component\Form\Extension\Core\Type\FormType';
     }
 }

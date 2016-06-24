@@ -13,7 +13,6 @@ namespace Symfony\Bundle\FrameworkBundle\Command;
 
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Console\Helper\Table;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\StyleInterface;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 
@@ -26,21 +25,27 @@ use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
  */
 abstract class AbstractConfigCommand extends ContainerDebugCommand
 {
-    protected function listBundles(OutputInterface $output)
+    protected function listBundles($output)
     {
+        $title = 'Available registered bundles with their extension alias if available';
         $headers = array('Bundle name', 'Extension alias');
         $rows = array();
-        foreach ($this->getContainer()->get('kernel')->getBundles() as $bundle) {
+
+        $bundles = $this->getContainer()->get('kernel')->getBundles();
+        usort($bundles, function ($bundleA, $bundleB) {
+            return strcmp($bundleA->getName(), $bundleB->getName());
+        });
+
+        foreach ($bundles as $bundle) {
             $extension = $bundle->getContainerExtension();
             $rows[] = array($bundle->getName(), $extension ? $extension->getAlias() : '');
         }
 
-        $message = 'Available registered bundles with their extension alias if available:';
         if ($output instanceof StyleInterface) {
-            $output->writeln(' '.$message);
+            $output->title($title);
             $output->table($headers, $rows);
         } else {
-            $output->writeln($message);
+            $output->writeln($title);
             $table = new Table($output);
             $table->setHeaders($headers)->setRows($rows)->render($output);
         }
@@ -48,26 +53,52 @@ abstract class AbstractConfigCommand extends ContainerDebugCommand
 
     protected function findExtension($name)
     {
-        $extension = null;
         $bundles = $this->initializeBundles();
+        $minScore = INF;
+
         foreach ($bundles as $bundle) {
+            if ($name === $bundle->getName()) {
+                if (!$bundle->getContainerExtension()) {
+                    throw new \LogicException(sprintf('Bundle "%s" does not have a container extension.', $name));
+                }
+
+                return $bundle->getContainerExtension();
+            }
+
+            $distance = levenshtein($name, $bundle->getName());
+
+            if ($distance < $minScore) {
+                $guess = $bundle->getName();
+                $minScore = $distance;
+            }
+
             $extension = $bundle->getContainerExtension();
 
-            if ($extension && ($name === $extension->getAlias() || $name === $bundle->getName())) {
-                break;
+            if ($extension) {
+                if ($name === $extension->getAlias()) {
+                    return $extension;
+                }
+
+                $distance = levenshtein($name, $extension->getAlias());
+
+                if ($distance < $minScore) {
+                    $guess = $extension->getAlias();
+                    $minScore = $distance;
+                }
             }
         }
 
-        if (!$extension) {
-            $message = sprintf('No extension with alias "%s" is enabled', $name);
-            if (preg_match('/Bundle$/', $name)) {
-                $message = sprintf('No extensions with configuration available for "%s"', $name);
-            }
-
-            throw new \LogicException($message);
+        if ('Bundle' !== substr($name, -6)) {
+            $message = sprintf('No extensions with configuration available for "%s".', $name);
+        } else {
+            $message = sprintf('No extension with alias "%s" is enabled.', $name);
         }
 
-        return $extension;
+        if (isset($guess) && $minScore < 3) {
+            $message .= sprintf("\n\nDid you mean \"%s\"?", $guess);
+        }
+
+        throw new \LogicException($message);
     }
 
     public function validateConfiguration(ExtensionInterface $extension, $configuration)

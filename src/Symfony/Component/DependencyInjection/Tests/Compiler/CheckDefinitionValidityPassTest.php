@@ -12,7 +12,6 @@
 namespace Symfony\Component\DependencyInjection\Tests\Compiler;
 
 use Symfony\Component\DependencyInjection\Compiler\CheckDefinitionValidityPass;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 class CheckDefinitionValidityPassTest extends \PHPUnit_Framework_TestCase
@@ -24,17 +23,6 @@ class CheckDefinitionValidityPassTest extends \PHPUnit_Framework_TestCase
     {
         $container = new ContainerBuilder();
         $container->register('a')->setSynthetic(true)->setPublic(false);
-
-        $this->process($container);
-    }
-
-    /**
-     * @expectedException \Symfony\Component\DependencyInjection\Exception\RuntimeException
-     */
-    public function testProcessDetectsSyntheticPrototypeDefinitions()
-    {
-        $container = new ContainerBuilder();
-        $container->register('a')->setSynthetic(true)->setScope(ContainerInterface::SCOPE_PROTOTYPE);
 
         $this->process($container);
     }

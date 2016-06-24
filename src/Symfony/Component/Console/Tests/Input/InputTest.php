@@ -94,12 +94,23 @@ class InputTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @expectedException        \RuntimeException
-     * @expectedExceptionMessage Not enough arguments.
+     * @expectedExceptionMessage Not enough arguments (missing: "name").
      */
     public function testValidateWithMissingArguments()
     {
         $input = new ArrayInput(array());
         $input->bind(new InputDefinition(array(new InputArgument('name', InputArgument::REQUIRED))));
+        $input->validate();
+    }
+
+    /**
+     * @expectedException        \RuntimeException
+     * @expectedExceptionMessage Not enough arguments (missing: "name").
+     */
+    public function testValidateWithMissingRequiredArguments()
+    {
+        $input = new ArrayInput(array('bar' => 'baz'));
+        $input->bind(new InputDefinition(array(new InputArgument('name', InputArgument::REQUIRED), new InputArgument('bar', InputArgument::OPTIONAL))));
         $input->validate();
     }
 
@@ -117,5 +128,13 @@ class InputTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($input->isInteractive(), '->isInteractive() returns whether the input should be interactive or not');
         $input->setInteractive(false);
         $this->assertFalse($input->isInteractive(), '->setInteractive() changes the interactive flag');
+    }
+
+    public function testSetGetStream()
+    {
+        $input = new ArrayInput(array());
+        $stream = fopen('php://memory', 'r+', false);
+        $input->setStream($stream);
+        $this->assertSame($stream, $input->getStream());
     }
 }

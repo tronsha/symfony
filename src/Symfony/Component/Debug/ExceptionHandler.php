@@ -11,7 +11,6 @@
 
 namespace Symfony\Component\Debug;
 
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Debug\Exception\FlattenException;
 use Symfony\Component\Debug\Exception\OutOfMemoryException;
 
@@ -38,12 +37,6 @@ class ExceptionHandler
 
     public function __construct($debug = true, $charset = null, $fileLinkFormat = null)
     {
-        if (false !== strpos($charset, '%') xor false === strpos($fileLinkFormat, '%')) {
-            // Swap $charset and $fileLinkFormat for BC reasons
-            $pivot = $fileLinkFormat;
-            $fileLinkFormat = $charset;
-            $charset = $pivot;
-        }
         $this->debug = $debug;
         $this->charset = $charset ?: ini_get('default_charset') ?: 'UTF-8';
         $this->fileLinkFormat = $fileLinkFormat ?: ini_get('xdebug.file_link_format') ?: get_cfg_var('xdebug.file_link_format');
@@ -78,11 +71,8 @@ class ExceptionHandler
      *
      * @return callable|null The previous exception handler if any
      */
-    public function setHandler($handler)
+    public function setHandler(callable $handler = null)
     {
-        if (null !== $handler && !is_callable($handler)) {
-            throw new \LogicException('The exception handler must be a valid PHP callable.');
-        }
         $old = $this->handler;
         $this->handler = $handler;
 
@@ -115,26 +105,25 @@ class ExceptionHandler
     public function handle(\Exception $exception)
     {
         if (null === $this->handler || $exception instanceof OutOfMemoryException) {
-            $this->failSafeHandle($exception);
+            $this->sendPhpResponse($exception);
 
             return;
         }
 
         $caughtLength = $this->caughtLength = 0;
 
-        ob_start(function($buffer) {
+        ob_start(function ($buffer) {
             $this->caughtBuffer = $buffer;
 
             return '';
         });
 
-
-        $this->failSafeHandle($exception);
+        $this->sendPhpResponse($exception);
         while (null === $this->caughtBuffer && ob_end_flush()) {
             // Empty loop, everything is in the condition
         }
         if (isset($this->caughtBuffer[0])) {
-            ob_start(function($buffer) {
+            ob_start(function ($buffer) {
                 if ($this->caughtLength) {
                     // use substr_replace() instead of substr() for mbstring overloading resistance
                     $cleanBuffer = substr_replace($buffer, '', 0, $this->caughtLength);
@@ -163,35 +152,12 @@ class ExceptionHandler
     }
 
     /**
-     * Sends a response for the given Exception.
-     *
-     * If you have the Symfony HttpFoundation component installed,
-     * this method will use it to create and send the response. If not,
-     * it will fallback to plain PHP functions.
-     *
-     * @param \Exception $exception An \Exception instance
-     *
-     * @see sendPhpResponse()
-     * @see createResponse()
-     */
-    private function failSafeHandle(\Exception $exception)
-    {
-        if (class_exists('Symfony\Component\HttpFoundation\Response', false)) {
-            $response = $this->createResponse($exception);
-            $response->sendHeaders();
-            $response->sendContent();
-        } else {
-            $this->sendPhpResponse($exception);
-        }
-    }
-
-    /**
      * Sends the error associated with the given Exception as a plain PHP response.
      *
      * This method uses plain PHP functions like header() and echo to output
      * the response.
      *
-     * @param \Exception|FlattenException $exception An \Exception instance
+     * @param \Exception|FlattenException $exception An \Exception or FlattenException instance
      */
     public function sendPhpResponse($exception)
     {
@@ -211,19 +177,19 @@ class ExceptionHandler
     }
 
     /**
-     * Creates the error Response associated with the given Exception.
+     * Gets the full HTML content associated with the given exception.
      *
-     * @param \Exception|FlattenException $exception An \Exception instance
+     * @param \Exception|FlattenException $exception An \Exception or FlattenException instance
      *
-     * @return Response A Response instance
+     * @return string The HTML content as a string
      */
-    public function createResponse($exception)
+    public function getHtml($exception)
     {
         if (!$exception instanceof FlattenException) {
             $exception = FlattenException::create($exception);
         }
 
-        return Response::create($this->decorate($this->getContent($exception), $this->getStylesheet($exception)), $exception->getStatusCode(), $exception->getHeaders())->setCharset($this->charset);
+        return $this->decorate($this->getContent($exception), $this->getStylesheet($exception));
     }
 
     /**
@@ -252,7 +218,7 @@ class ExceptionHandler
                     $ind = $count - $position + 1;
                     $class = $this->formatClass($e['class']);
                     $message = nl2br($this->escapeHtml($e['message']));
-                    $content .= sprintf(<<<EOF
+                    $content .= sprintf(<<<'EOF'
                         <h2 class="block_exception clear_fix">
                             <span class="exception_counter">%d/%d</span>
                             <span class="exception_title">%s%s:</span>
@@ -303,7 +269,7 @@ EOF;
      */
     public function getStylesheet(FlattenException $exception)
     {
-        return <<<EOF
+        return <<<'EOF'
             .sf-reset { font: 11px Verdana, Arial, sans-serif; color: #333 }
             .sf-reset .clear { clear:both; height:0; font-size:0; line-height:0; }
             .sf-reset .clear_fix:after { display:block; height:0; clear:both; visibility:hidden; }
@@ -324,10 +290,6 @@ EOF;
             .sf-reset .exception_message { margin-left: 3em; display: block; }
             .sf-reset .traces li { font-size:12px; padding: 2px 4px; list-style-type:decimal; margin-left:20px; }
             .sf-reset .block { background-color:#FFFFFF; padding:10px 28px; margin-bottom:20px;
-                -webkit-border-bottom-right-radius: 16px;
-                -webkit-border-bottom-left-radius: 16px;
-                -moz-border-radius-bottomright: 16px;
-                -moz-border-radius-bottomleft: 16px;
                 border-bottom-right-radius: 16px;
                 border-bottom-left-radius: 16px;
                 border-bottom:1px solid #ccc;
@@ -335,10 +297,6 @@ EOF;
                 border-left:1px solid #ccc;
             }
             .sf-reset .block_exception { background-color:#ddd; color: #333; padding:20px;
-                -webkit-border-top-left-radius: 16px;
-                -webkit-border-top-right-radius: 16px;
-                -moz-border-radius-topleft: 16px;
-                -moz-border-radius-topright: 16px;
                 border-top-left-radius: 16px;
                 border-top-right-radius: 16px;
                 border-top:1px solid #ccc;
@@ -351,8 +309,6 @@ EOF;
             .sf-reset a:hover { background:none; color:#313131; text-decoration:underline; }
             .sf-reset ol { padding: 10px 0; }
             .sf-reset h1 { background-color:#FFFFFF; padding: 15px 28px; margin-bottom: 20px;
-                -webkit-border-radius: 10px;
-                -moz-border-radius: 10px;
                 border-radius: 10px;
                 border: 1px solid #ccc;
             }
@@ -377,7 +333,7 @@ EOF;
             $css
         </style>
     </head>
-    <body>
+    <body ondblclick="var t = event.target; if (t.title && !t.href) { var f = t.innerHTML; t.innerHTML = t.title; t.title = f; }">
         $content
     </body>
 </html>
@@ -402,7 +358,7 @@ EOF;
             return sprintf(' in <a href="%s" title="Go to source">%s line %d</a>', $link, $file, $line);
         }
 
-        return sprintf(' in <a title="%s line %3$d" ondblclick="var f=this.innerHTML;this.innerHTML=this.title;this.title=f;">%s line %d</a>', $path, $file, $line);
+        return sprintf(' in <a title="%s line %3$d">%s line %d</a>', $path, $file, $line);
     }
 
     /**
@@ -420,8 +376,6 @@ EOF;
                 $formattedValue = sprintf('<em>object</em>(%s)', $this->formatClass($item[1]));
             } elseif ('array' === $item[0]) {
                 $formattedValue = sprintf('<em>array</em>(%s)', is_array($item[1]) ? $this->formatArgs($item[1]) : $item[1]);
-            } elseif ('string' === $item[0]) {
-                $formattedValue = sprintf("'%s'", $this->escapeHtml($item[1]));
             } elseif ('null' === $item[0]) {
                 $formattedValue = '<em>null</em>';
             } elseif ('boolean' === $item[0]) {
@@ -429,7 +383,7 @@ EOF;
             } elseif ('resource' === $item[0]) {
                 $formattedValue = '<em>resource</em>';
             } else {
-                $formattedValue = str_replace("\n", '', var_export($this->escapeHtml((string) $item[1]), true));
+                $formattedValue = str_replace("\n", '', $this->escapeHtml(var_export($item[1], true)));
             }
 
             $result[] = is_int($key) ? $formattedValue : sprintf("'%s' => %s", $key, $formattedValue);
@@ -443,6 +397,6 @@ EOF;
      */
     private function escapeHtml($str)
     {
-        return htmlspecialchars($str, ENT_QUOTES | ENT_SUBSTITUTE, $this->charset);
+        return htmlspecialchars($str, ENT_COMPAT | ENT_SUBSTITUTE, $this->charset);
     }
 }

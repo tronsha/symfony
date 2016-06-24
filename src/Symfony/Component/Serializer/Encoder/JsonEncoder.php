@@ -67,14 +67,4 @@ class JsonEncoder implements EncoderInterface, DecoderInterface
     {
         return self::FORMAT === $format;
     }
-
-    /**
-     * Resolves json_last_error message.
-     *
-     * @return string
-     */
-    public static function getLastErrorMessage()
-    {
-        return json_last_error_msg();
-    }
 }

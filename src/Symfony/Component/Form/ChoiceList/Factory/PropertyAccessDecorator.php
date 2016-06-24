@@ -54,8 +54,8 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
     /**
      * Decorates the given factory.
      *
-     * @param ChoiceListFactoryInterface      $decoratedFactory The decorated factory
-     * @param null|PropertyAccessorInterface  $propertyAccessor The used property accessor
+     * @param ChoiceListFactoryInterface     $decoratedFactory The decorated factory
+     * @param null|PropertyAccessorInterface $propertyAccessor The used property accessor
      */
     public function __construct(ChoiceListFactoryInterface $decoratedFactory, PropertyAccessorInterface $propertyAccessor = null)
     {
@@ -84,8 +84,10 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
      */
     public function createListFromChoices($choices, $value = null)
     {
-        if (is_string($value)) {
+        if (is_string($value) && !is_callable($value)) {
             $value = new PropertyPath($value);
+        } elseif (is_string($value) && is_callable($value)) {
+            @trigger_error('Passing callable strings is deprecated since version 3.1 and PropertyAccessDecorator will treat them as property paths in 4.0. You should use a "\Closure" instead.', E_USER_DEPRECATED);
         }
 
         if ($value instanceof PropertyPath) {
@@ -98,8 +100,6 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
                 if (is_object($choice) || is_array($choice)) {
                     return $accessor->getValue($choice, $value);
                 }
-
-                return;
             };
         }
 
@@ -109,41 +109,30 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
     /**
      * {@inheritdoc}
      *
-     * @param array|\Traversable                $choices The choices
-     * @param null|callable|string|PropertyPath $value   The callable or path for
-     *                                                   generating the choice values
-     *
-     * @return ChoiceListInterface The choice list
-     *
-     * @deprecated Added for backwards compatibility in Symfony 2.7, to be
-     *             removed in Symfony 3.0.
-     */
-    public function createListFromFlippedChoices($choices, $value = null)
-    {
-        // Property paths are not supported here, because array keys can never
-        // be objects
-        return $this->decoratedFactory->createListFromFlippedChoices($choices, $value);
-    }
-
-    /**
-     * {@inheritdoc}
-     *
-     * @param ChoiceLoaderInterface             $loader  The choice loader
-     * @param null|callable|string|PropertyPath $value   The callable or path for
-     *                                                   generating the choice values
+     * @param ChoiceLoaderInterface             $loader The choice loader
+     * @param null|callable|string|PropertyPath $value  The callable or path for
+     *                                                  generating the choice values
      *
      * @return ChoiceListInterface The choice list
      */
     public function createListFromLoader(ChoiceLoaderInterface $loader, $value = null)
     {
-        if (is_string($value)) {
+        if (is_string($value) && !is_callable($value)) {
             $value = new PropertyPath($value);
+        } elseif (is_string($value) && is_callable($value)) {
+            @trigger_error('Passing callable strings is deprecated since version 3.1 and PropertyAccessDecorator will treat them as property paths in 4.0. You should use a "\Closure" instead.', E_USER_DEPRECATED);
         }
 
         if ($value instanceof PropertyPath) {
             $accessor = $this->propertyAccessor;
             $value = function ($choice) use ($accessor, $value) {
-                return $accessor->getValue($choice, $value);
+                // The callable may be invoked with a non-object/array value
+                // when such values are passed to
+                // ChoiceListInterface::getValuesForChoices(). Handle this case
+                // so that the call to getValue() doesn't break.
+                if (is_object($choice) || is_array($choice)) {
+                    return $accessor->getValue($choice, $value);
+                }
             };
         }
 
@@ -153,12 +142,12 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
     /**
      * {@inheritdoc}
      *
-     * @param ChoiceListInterface                                  $list             The choice list
-     * @param null|array|callable|string|PropertyPath              $preferredChoices The preferred choices
-     * @param null|callable|string|PropertyPath                    $label            The callable or path generating the choice labels
-     * @param null|callable|string|PropertyPath                    $index            The callable or path generating the view indices
-     * @param null|array|\Traversable|callable|string|PropertyPath $groupBy          The callable or path generating the group names
-     * @param null|array|callable|string|PropertyPath              $attr             The callable or path generating the HTML attributes
+     * @param ChoiceListInterface                     $list             The choice list
+     * @param null|array|callable|string|PropertyPath $preferredChoices The preferred choices
+     * @param null|callable|string|PropertyPath       $label            The callable or path generating the choice labels
+     * @param null|callable|string|PropertyPath       $index            The callable or path generating the view indices
+     * @param null|callable|string|PropertyPath       $groupBy          The callable or path generating the group names
+     * @param null|array|callable|string|PropertyPath $attr             The callable or path generating the HTML attributes
      *
      * @return ChoiceListView The choice list view
      */
@@ -166,8 +155,10 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
     {
         $accessor = $this->propertyAccessor;
 
-        if (is_string($label)) {
+        if (is_string($label) && !is_callable($label)) {
             $label = new PropertyPath($label);
+        } elseif (is_string($label) && is_callable($label)) {
+            @trigger_error('Passing callable strings is deprecated since version 3.1 and PropertyAccessDecorator will treat them as property paths in 4.0. You should use a "\Closure" instead.', E_USER_DEPRECATED);
         }
 
         if ($label instanceof PropertyPath) {
@@ -176,8 +167,10 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
             };
         }
 
-        if (is_string($preferredChoices)) {
+        if (is_string($preferredChoices) && !is_callable($preferredChoices)) {
             $preferredChoices = new PropertyPath($preferredChoices);
+        } elseif (is_string($preferredChoices) && is_callable($preferredChoices)) {
+            @trigger_error('Passing callable strings is deprecated since version 3.1 and PropertyAccessDecorator will treat them as property paths in 4.0. You should use a "\Closure" instead.', E_USER_DEPRECATED);
         }
 
         if ($preferredChoices instanceof PropertyPath) {
@@ -191,8 +184,10 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
             };
         }
 
-        if (is_string($index)) {
+        if (is_string($index) && !is_callable($index)) {
             $index = new PropertyPath($index);
+        } elseif (is_string($index) && is_callable($index)) {
+            @trigger_error('Passing callable strings is deprecated since version 3.1 and PropertyAccessDecorator will treat them as property paths in 4.0. You should use a "\Closure" instead.', E_USER_DEPRECATED);
         }
 
         if ($index instanceof PropertyPath) {
@@ -201,8 +196,10 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
             };
         }
 
-        if (is_string($groupBy)) {
+        if (is_string($groupBy) && !is_callable($groupBy)) {
             $groupBy = new PropertyPath($groupBy);
+        } elseif (is_string($groupBy) && is_callable($groupBy)) {
+            @trigger_error('Passing callable strings is deprecated since version 3.1 and PropertyAccessDecorator will treat them as property paths in 4.0. You should use a "\Closure" instead.', E_USER_DEPRECATED);
         }
 
         if ($groupBy instanceof PropertyPath) {
@@ -215,8 +212,10 @@ class PropertyAccessDecorator implements ChoiceListFactoryInterface
             };
         }
 
-        if (is_string($attr)) {
+        if (is_string($attr) && !is_callable($attr)) {
             $attr = new PropertyPath($attr);
+        } elseif (is_string($attr) && is_callable($attr)) {
+            @trigger_error('Passing callable strings is deprecated since version 3.1 and PropertyAccessDecorator will treat them as property paths in 4.0. You should use a "\Closure" instead.', E_USER_DEPRECATED);
         }
 
         if ($attr instanceof PropertyPath) {

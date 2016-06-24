@@ -19,7 +19,6 @@
         "php": ">=5.5.9"
     },
     "require-dev": {
-        "symfony/phpunit-bridge": "~2.8|~3.0",
         "symfony/config": "~2.8|~3.0",
         "symfony/http-foundation": "~2.8|~3.0",
         "symfony/yaml": "~2.8|~3.0",
@@ -32,18 +31,23 @@
         "symfony/config": "<2.8"
     },
     "suggest": {
+        "symfony/http-foundation": "For using a Symfony Request object",
         "symfony/config": "For using the all-in-one router or any loader",
         "symfony/yaml": "For using the YAML loader",
         "symfony/expression-language": "For using expression matching",
-        "doctrine/annotations": "For using the annotation loader"
+        "doctrine/annotations": "For using the annotation loader",
+        "symfony/dependency-injection": "For loading routes from a service"
     },
     "autoload": {
-        "psr-4": { "Symfony\\Component\\Routing\\": "" }
+        "psr-4": { "Symfony\\Component\\Routing\\": "" },
+        "exclude-from-classmap": [
+            "/Tests/"
+        ]
     },
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {
-            "dev-master": "3.0-dev"
+            "dev-master": "3.2-dev"
         }
     }
 }

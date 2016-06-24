@@ -21,16 +21,17 @@ use Symfony\Component\HttpKernel\Event\GetResponseEvent;
  */
 class WebProcessor extends BaseWebProcessor
 {
-    public function __construct()
+    public function __construct(array $extraFields = null)
     {
         // Pass an empty array as the default null value would access $_SERVER
-        parent::__construct(array());
+        parent::__construct(array(), $extraFields);
     }
 
     public function onKernelRequest(GetResponseEvent $event)
     {
         if ($event->isMasterRequest()) {
             $this->serverData = $event->getRequest()->server->all();
+            $this->serverData['REMOTE_ADDR'] = $event->getRequest()->getClientIp();
         }
     }
 }

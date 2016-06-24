@@ -16,18 +16,26 @@
         }
     ],
     "require": {
-        "php": ">=5.5.9"
+        "php": ">=5.5.9",
+        "symfony/polyfill-php70": "~1.0",
+        "symfony/inflector": "~3.1"
     },
     "require-dev": {
-        "symfony/phpunit-bridge": "~2.8|~3.0"
+        "symfony/cache": "~3.1"
+    },
+    "suggest": {
+        "psr/cache-implementation": "To cache access methods."
     },
     "autoload": {
-        "psr-4": { "Symfony\\Component\\PropertyAccess\\": "" }
+        "psr-4": { "Symfony\\Component\\PropertyAccess\\": "" },
+        "exclude-from-classmap": [
+            "/Tests/"
+        ]
     },
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {
-            "dev-master": "3.0-dev"
+            "dev-master": "3.2-dev"
         }
     }
 }

@@ -53,8 +53,13 @@ class FlattenException
         $e->setClass(get_class($exception));
         $e->setFile($exception->getFile());
         $e->setLine($exception->getLine());
-        if ($exception->getPrevious()) {
-            $e->setPrevious(static::create($exception->getPrevious()));
+
+        $previous = $exception->getPrevious();
+
+        if ($previous instanceof \Exception) {
+            $e->setPrevious(static::create($previous));
+        } elseif ($previous instanceof \Throwable) {
+            $e->setPrevious(static::create(new FatalThrowableError($previous)));
         }
 
         return $e;
@@ -229,6 +234,10 @@ class FlattenException
                 $result[$key] = array('null', null);
             } elseif (is_bool($value)) {
                 $result[$key] = array('boolean', $value);
+            } elseif (is_integer($value)) {
+                $result[$key] = array('integer', $value);
+            } elseif (is_float($value)) {
+                $result[$key] = array('float', $value);
             } elseif (is_resource($value)) {
                 $result[$key] = array('resource', get_resource_type($value));
             } elseif ($value instanceof \__PHP_Incomplete_Class) {

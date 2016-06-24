@@ -19,6 +19,8 @@ use Symfony\Component\Security\Core\Exception\BadCredentialsException;
  */
 class BCryptPasswordEncoder extends BasePasswordEncoder
 {
+    const MAX_PASSWORD_LENGTH = 72;
+
     /**
      * @var string
      */
@@ -71,7 +73,7 @@ class BCryptPasswordEncoder extends BasePasswordEncoder
         $options = array('cost' => $this->cost);
 
         if ($salt) {
-            $options['salt'] = $salt;
+            // Ignore $salt, the auto-generated one is always the best
         }
 
         return password_hash($raw, PASSWORD_BCRYPT, $options);

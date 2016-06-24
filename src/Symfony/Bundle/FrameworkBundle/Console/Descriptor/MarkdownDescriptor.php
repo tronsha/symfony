@@ -176,13 +176,24 @@ class MarkdownDescriptor extends Descriptor
     protected function describeContainerDefinition(Definition $definition, array $options = array())
     {
         $output = '- Class: `'.$definition->getClass().'`'
-            ."\n".'- Scope: `'.$definition->getScope().'`'
             ."\n".'- Public: '.($definition->isPublic() ? 'yes' : 'no')
             ."\n".'- Synthetic: '.($definition->isSynthetic() ? 'yes' : 'no')
             ."\n".'- Lazy: '.($definition->isLazy() ? 'yes' : 'no')
         ;
 
+        if (method_exists($definition, 'isShared')) {
+            $output .= "\n".'- Shared: '.($definition->isShared() ? 'yes' : 'no');
+        }
+
         $output .= "\n".'- Abstract: '.($definition->isAbstract() ? 'yes' : 'no');
+
+        if (method_exists($definition, 'isAutowired')) {
+            $output .= "\n".'- Autowired: '.($definition->isAutowired() ? 'yes' : 'no');
+
+            foreach ($definition->getAutowiringTypes() as $autowiringType) {
+                $output .= "\n".'- Autowiring Type: `'.$autowiringType.'`';
+            }
+        }
 
         if ($definition->getFile()) {
             $output .= "\n".'- File: `'.$definition->getFile().'`';
@@ -201,6 +212,11 @@ class MarkdownDescriptor extends Descriptor
             } else {
                 $output .= "\n".'- Factory Function: `'.$factory.'`';
             }
+        }
+
+        $calls = $definition->getMethodCalls();
+        foreach ($calls as $callData) {
+            $output .= "\n".'- Call: `'.$callData[0].'`';
         }
 
         if (!(isset($options['omit_tags']) && $options['omit_tags'])) {
@@ -250,30 +266,23 @@ class MarkdownDescriptor extends Descriptor
 
         $this->write(sprintf('# %s', $title)."\n");
 
-        $registeredListeners = $eventDispatcher->getListeners($event, true);
+        $registeredListeners = $eventDispatcher->getListeners($event);
         if (null !== $event) {
-            krsort($registeredListeners);
-            $order = 1;
-            foreach ($registeredListeners as $priority => $listeners) {
-                foreach ($listeners as $listener) {
-                    $this->write("\n".sprintf('## Listener %d', $order++)."\n");
-                    $this->describeCallable($listener);
-                    $this->write(sprintf('- Priority: `%d`', $priority)."\n");
-                }
+            foreach ($registeredListeners as $order => $listener) {
+                $this->write("\n".sprintf('## Listener %d', $order + 1)."\n");
+                $this->describeCallable($listener);
+                $this->write(sprintf('- Priority: `%d`', $eventDispatcher->getListenerPriority($event, $listener))."\n");
             }
         } else {
             ksort($registeredListeners);
 
             foreach ($registeredListeners as $eventListened => $eventListeners) {
                 $this->write("\n".sprintf('## %s', $eventListened)."\n");
-                krsort($eventListeners);
-                $order = 1;
-                foreach ($eventListeners as $priority => $listeners) {
-                    foreach ($listeners as $listener) {
-                        $this->write("\n".sprintf('### Listener %d', $order++)."\n");
-                        $this->describeCallable($listener);
-                        $this->write(sprintf('- Priority: `%d`', $priority)."\n");
-                    }
+
+                foreach ($eventListeners as $order => $eventListener) {
+                    $this->write("\n".sprintf('### Listener %d', $order + 1)."\n");
+                    $this->describeCallable($eventListener);
+                    $this->write(sprintf('- Priority: `%d`', $eventDispatcher->getListenerPriority($eventListened, $eventListener))."\n");
                 }
             }
         }

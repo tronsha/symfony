@@ -19,19 +19,21 @@
         "php": ">=5.5.9"
     },
     "require-dev": {
-        "symfony/phpunit-bridge": "~2.8|~3.0",
         "psr/log": "~1.0"
     },
     "suggest": {
         "psr/log": "For using debug logging in loaders"
     },
     "autoload": {
-        "psr-4": { "Symfony\\Component\\Templating\\": "" }
+        "psr-4": { "Symfony\\Component\\Templating\\": "" },
+        "exclude-from-classmap": [
+            "/Tests/"
+        ]
     },
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {
-            "dev-master": "3.0-dev"
+            "dev-master": "3.2-dev"
         }
     }
 }

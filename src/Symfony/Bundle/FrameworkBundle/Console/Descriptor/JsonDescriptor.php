@@ -157,7 +157,7 @@ class JsonDescriptor extends Descriptor
     {
         $key = isset($options['parameter']) ? $options['parameter'] : '';
 
-        $this->writeData(array($key => $this->formatParameter($parameter)), $options);
+        $this->writeData(array($key => $parameter), $options);
     }
 
     /**
@@ -171,12 +171,7 @@ class JsonDescriptor extends Descriptor
     private function writeData(array $data, array $options)
     {
         $flags = isset($options['json_encoding']) ? $options['json_encoding'] : 0;
-
-        if (defined('JSON_PRETTY_PRINT')) {
-            $flags |= JSON_PRETTY_PRINT;
-        }
-
-        $this->write(json_encode($data, $flags)."\n");
+        $this->write(json_encode($data, $flags | JSON_PRETTY_PRINT)."\n");
     }
 
     /**
@@ -210,13 +205,26 @@ class JsonDescriptor extends Descriptor
     {
         $data = array(
             'class' => (string) $definition->getClass(),
-            'scope' => $definition->getScope(),
             'public' => $definition->isPublic(),
             'synthetic' => $definition->isSynthetic(),
             'lazy' => $definition->isLazy(),
         );
 
+        if (method_exists($definition, 'isShared')) {
+            $data['shared'] = $definition->isShared();
+        }
+
         $data['abstract'] = $definition->isAbstract();
+
+        if (method_exists($definition, 'isAutowired')) {
+            $data['autowire'] = $definition->isAutowired();
+
+            $data['autowiring_types'] = array();
+            foreach ($definition->getAutowiringTypes() as $autowiringType) {
+                $data['autowiring_types'][] = $autowiringType;
+            }
+        }
+
         $data['file'] = $definition->getFile();
 
         if ($factory = $definition->getFactory()) {
@@ -231,6 +239,14 @@ class JsonDescriptor extends Descriptor
                 $data['factory_method'] = $factory[1];
             } else {
                 $data['factory_function'] = $factory;
+            }
+        }
+
+        $calls = $definition->getMethodCalls();
+        if (count($calls) > 0) {
+            $data['calls'] = array();
+            foreach ($calls as $callData) {
+                $data['calls'][] = $callData[0];
             }
         }
 
@@ -271,27 +287,21 @@ class JsonDescriptor extends Descriptor
     {
         $data = array();
 
-        $registeredListeners = $eventDispatcher->getListeners($event, true);
+        $registeredListeners = $eventDispatcher->getListeners($event);
         if (null !== $event) {
-            krsort($registeredListeners);
-            foreach ($registeredListeners as $priority => $listeners) {
-                foreach ($listeners as $listener) {
-                    $listener = $this->getCallableData($listener);
-                    $listener['priority'] = $priority;
-                    $data[] = $listener;
-                }
+            foreach ($registeredListeners as $listener) {
+                $l = $this->getCallableData($listener);
+                $l['priority'] = $eventDispatcher->getListenerPriority($event, $listener);
+                $data[] = $l;
             }
         } else {
             ksort($registeredListeners);
 
             foreach ($registeredListeners as $eventListened => $eventListeners) {
-                krsort($eventListeners);
-                foreach ($eventListeners as $priority => $listeners) {
-                    foreach ($listeners as $listener) {
-                        $listener = $this->getCallableData($listener);
-                        $listener['priority'] = $priority;
-                        $data[$eventListened][] = $listener;
-                    }
+                foreach ($eventListeners as $eventListener) {
+                    $l = $this->getCallableData($eventListener);
+                    $l['priority'] = $eventDispatcher->getListenerPriority($eventListened, $eventListener);
+                    $data[$eventListened][] = $l;
                 }
             }
         }

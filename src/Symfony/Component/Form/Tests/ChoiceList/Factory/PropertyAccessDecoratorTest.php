@@ -63,20 +63,19 @@ class PropertyAccessDecoratorTest extends \PHPUnit_Framework_TestCase
         $this->assertSame(array('value'), $this->factory->createListFromChoices($choices, new PropertyPath('property')));
     }
 
-    public function testCreateFromFlippedChoices()
+    /**
+     * @group legacy
+     */
+    public function testCreateFromChoicesPropertyPathWithCallableString()
     {
-        // Property paths are not supported here, because array keys can never
-        // be objects anyway
-        $choices = array('a' => 'A');
-        $value = 'foobar';
-        $list = new \stdClass();
+        $choices = array('foo' => 'bar');
 
         $this->decoratedFactory->expects($this->once())
-            ->method('createListFromFlippedChoices')
-            ->with($choices, $value)
-            ->will($this->returnValue($list));
+            ->method('createListFromChoices')
+            ->with($choices, 'end')
+            ->willReturn('RESULT');
 
-        $this->assertSame($list, $this->factory->createListFromFlippedChoices($choices, $value));
+        $this->assertSame('RESULT', $this->factory->createListFromChoices($choices, 'end'));
     }
 
     public function testCreateFromLoaderPropertyPath()
@@ -91,6 +90,51 @@ class PropertyAccessDecoratorTest extends \PHPUnit_Framework_TestCase
             }));
 
         $this->assertSame('value', $this->factory->createListFromLoader($loader, 'property'));
+    }
+
+    /**
+     * @group legacy
+     */
+    public function testCreateFromLoaderPropertyPathWithCallableString()
+    {
+        $loader = $this->getMock('Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface');
+
+        $this->decoratedFactory->expects($this->once())
+            ->method('createListFromLoader')
+            ->with($loader, 'end')
+            ->willReturn('RESULT');
+
+        $this->assertSame('RESULT', $this->factory->createListFromLoader($loader, 'end'));
+    }
+
+    // https://github.com/symfony/symfony/issues/5494
+    public function testCreateFromChoicesAssumeNullIfValuePropertyPathUnreadable()
+    {
+        $choices = array(null);
+
+        $this->decoratedFactory->expects($this->once())
+            ->method('createListFromChoices')
+            ->with($choices, $this->isInstanceOf('\Closure'))
+            ->will($this->returnCallback(function ($choices, $callback) {
+                return array_map($callback, $choices);
+            }));
+
+        $this->assertSame(array(null), $this->factory->createListFromChoices($choices, 'property'));
+    }
+
+    // https://github.com/symfony/symfony/issues/5494
+    public function testCreateFromChoiceLoaderAssumeNullIfValuePropertyPathUnreadable()
+    {
+        $loader = $this->getMock('Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface');
+
+        $this->decoratedFactory->expects($this->once())
+            ->method('createListFromLoader')
+            ->with($loader, $this->isInstanceOf('\Closure'))
+            ->will($this->returnCallback(function ($loader, $callback) {
+                return $callback(null);
+            }));
+
+        $this->assertNull($this->factory->createListFromLoader($loader, 'property'));
     }
 
     public function testCreateFromLoaderPropertyPathInstance()
@@ -121,6 +165,24 @@ class PropertyAccessDecoratorTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($this->factory->createView(
             $list,
             'property'
+        ));
+    }
+
+    /**
+     * @group legacy
+     */
+    public function testCreateViewPreferredChoicesAsPropertyPathWithCallableString()
+    {
+        $list = $this->getMock('Symfony\Component\Form\ChoiceList\ChoiceListInterface');
+
+        $this->decoratedFactory->expects($this->once())
+            ->method('createView')
+            ->with($list, 'end')
+            ->willReturn('RESULT');
+
+        $this->assertSame('RESULT', $this->factory->createView(
+            $list,
+            'end'
         ));
     }
 
@@ -177,6 +239,25 @@ class PropertyAccessDecoratorTest extends \PHPUnit_Framework_TestCase
         ));
     }
 
+    /**
+     * @group legacy
+     */
+    public function testCreateViewLabelsAsPropertyPathWithCallableString()
+    {
+        $list = $this->getMock('Symfony\Component\Form\ChoiceList\ChoiceListInterface');
+
+        $this->decoratedFactory->expects($this->once())
+            ->method('createView')
+            ->with($list, null, 'end')
+            ->willReturn('RESULT');
+
+        $this->assertSame('RESULT', $this->factory->createView(
+            $list,
+            null, // preferred choices
+            'end'
+        ));
+    }
+
     public function testCreateViewLabelsAsPropertyPathInstance()
     {
         $list = $this->getMock('Symfony\Component\Form\ChoiceList\ChoiceListInterface');
@@ -211,6 +292,26 @@ class PropertyAccessDecoratorTest extends \PHPUnit_Framework_TestCase
             null, // preferred choices
             null, // label
             'property'
+        ));
+    }
+
+    /**
+     * @group legacy
+     */
+    public function testCreateViewIndicesAsPropertyPathWithCallableString()
+    {
+        $list = $this->getMock('Symfony\Component\Form\ChoiceList\ChoiceListInterface');
+
+        $this->decoratedFactory->expects($this->once())
+            ->method('createView')
+            ->with($list, null, null, 'end')
+            ->willReturn('RESULT');
+
+        $this->assertSame('RESULT', $this->factory->createView(
+            $list,
+            null, // preferred choices
+            null, // label
+            'end'
         ));
     }
 
@@ -250,6 +351,27 @@ class PropertyAccessDecoratorTest extends \PHPUnit_Framework_TestCase
             null, // label
             null, // index
             'property'
+        ));
+    }
+
+    /**
+     * @group legacy
+     */
+    public function testCreateViewGroupsAsPropertyPathWithCallableString()
+    {
+        $list = $this->getMock('Symfony\Component\Form\ChoiceList\ChoiceListInterface');
+
+        $this->decoratedFactory->expects($this->once())
+            ->method('createView')
+            ->with($list, null, null, null, 'end')
+            ->willReturn('RESULT');
+
+        $this->assertSame('RESULT', $this->factory->createView(
+            $list,
+            null, // preferred choices
+            null, // label
+            null, // index
+            'end'
         ));
     }
 
@@ -312,6 +434,28 @@ class PropertyAccessDecoratorTest extends \PHPUnit_Framework_TestCase
             null, // index
             null, // groups
             'property'
+        ));
+    }
+
+    /**
+     * @group legacy
+     */
+    public function testCreateViewAttrAsPropertyPathWithCallableString()
+    {
+        $list = $this->getMock('Symfony\Component\Form\ChoiceList\ChoiceListInterface');
+
+        $this->decoratedFactory->expects($this->once())
+            ->method('createView')
+            ->with($list, null, null, null, null, 'end')
+            ->willReturn('RESULT');
+
+        $this->assertSame('RESULT', $this->factory->createView(
+            $list,
+            null, // preferred choices
+            null, // label
+            null, // inde
+            null, // groups
+            'end'
         ));
     }
 

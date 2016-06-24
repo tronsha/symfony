@@ -167,7 +167,7 @@ class ProcessBuilder
     /**
      * Sets the input of the process.
      *
-     * @param mixed $input The input as a string
+     * @param resource|scalar|\Traversable|null $input The input content
      *
      * @return ProcessBuilder
      *
@@ -175,7 +175,7 @@ class ProcessBuilder
      */
     public function setInput($input)
     {
-        $this->input = ProcessUtils::validateInput(sprintf('%s::%s', __CLASS__, __FUNCTION__), $input);
+        $this->input = ProcessUtils::validateInput(__METHOD__, $input);
 
         return $this;
     }
@@ -267,15 +267,11 @@ class ProcessBuilder
         $arguments = array_merge($this->prefix, $this->arguments);
         $script = implode(' ', array_map(array(__NAMESPACE__.'\\ProcessUtils', 'escapeArgument'), $arguments));
 
+        $process = new Process($script, $this->cwd, $this->env, $this->input, $this->timeout, $options);
+
         if ($this->inheritEnv) {
-            // include $_ENV for BC purposes
-            $env = array_replace($_ENV, $_SERVER, $this->env);
-        } else {
-            $env = $this->env;
+            $process->inheritEnvironmentVariables();
         }
-
-        $process = new Process($script, $this->cwd, $env, $this->input, $this->timeout, $options);
-
         if ($this->outputDisabled) {
             $process->disableOutput();
         }

@@ -24,10 +24,10 @@
         }
     ],
     "require": {
-        "php": ">=5.5.9"
+        "php": ">=5.5.9",
+        "symfony/polyfill-intl-icu": "~1.0"
     },
     "require-dev": {
-        "symfony/phpunit-bridge": "~2.8|~3.0",
         "symfony/filesystem": "~2.8|~3.0"
     },
     "suggest": {
@@ -36,12 +36,14 @@
     "autoload": {
         "psr-4": { "Symfony\\Component\\Intl\\": "" },
         "classmap": [ "Resources/stubs" ],
-        "files": [ "Resources/stubs/functions.php" ]
+        "exclude-from-classmap": [
+            "/Tests/"
+        ]
     },
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {
-            "dev-master": "3.0-dev"
+            "dev-master": "3.2-dev"
         }
     }
 }

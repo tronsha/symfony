@@ -346,12 +346,28 @@ class XmlDescriptor extends Descriptor
             }
         }
 
-        $serviceXML->setAttribute('scope', $definition->getScope());
         $serviceXML->setAttribute('public', $definition->isPublic() ? 'true' : 'false');
         $serviceXML->setAttribute('synthetic', $definition->isSynthetic() ? 'true' : 'false');
         $serviceXML->setAttribute('lazy', $definition->isLazy() ? 'true' : 'false');
+        if (method_exists($definition, 'isShared')) {
+            $serviceXML->setAttribute('shared', $definition->isShared() ? 'true' : 'false');
+        }
         $serviceXML->setAttribute('abstract', $definition->isAbstract() ? 'true' : 'false');
+
+        if (method_exists($definition, 'isAutowired')) {
+            $serviceXML->setAttribute('autowired', $definition->isAutowired() ? 'true' : 'false');
+        }
+
         $serviceXML->setAttribute('file', $definition->getFile());
+
+        $calls = $definition->getMethodCalls();
+        if (count($calls) > 0) {
+            $serviceXML->appendChild($callsXML = $dom->createElement('calls'));
+            foreach ($calls as $callData) {
+                $callsXML->appendChild($callXML = $dom->createElement('call'));
+                $callXML->setAttribute('method', $callData[0]);
+            }
+        }
 
         if (!$omitTags) {
             $tags = $definition->getTags();
@@ -427,9 +443,9 @@ class XmlDescriptor extends Descriptor
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->appendChild($eventDispatcherXML = $dom->createElement('event-dispatcher'));
 
-        $registeredListeners = $eventDispatcher->getListeners($event, true);
+        $registeredListeners = $eventDispatcher->getListeners($event);
         if (null !== $event) {
-            $this->appendEventListenerDocument($eventDispatcherXML, $registeredListeners);
+            $this->appendEventListenerDocument($eventDispatcher, $event, $eventDispatcherXML, $registeredListeners);
         } else {
             ksort($registeredListeners);
 
@@ -437,7 +453,7 @@ class XmlDescriptor extends Descriptor
                 $eventDispatcherXML->appendChild($eventXML = $dom->createElement('event'));
                 $eventXML->setAttribute('name', $eventListened);
 
-                $this->appendEventListenerDocument($eventXML, $eventListeners);
+                $this->appendEventListenerDocument($eventDispatcher, $eventListened, $eventXML, $eventListeners);
             }
         }
 
@@ -445,19 +461,16 @@ class XmlDescriptor extends Descriptor
     }
 
     /**
-     * @param DOMElement $element
-     * @param array      $eventListeners
+     * @param \DOMElement $element
+     * @param array       $eventListeners
      */
-    private function appendEventListenerDocument(\DOMElement $element, array $eventListeners)
+    private function appendEventListenerDocument(EventDispatcherInterface $eventDispatcher, $event, \DOMElement $element, array $eventListeners)
     {
-        krsort($eventListeners);
-        foreach ($eventListeners as $priority => $listeners) {
-            foreach ($listeners as $listener) {
-                $callableXML = $this->getCallableDocument($listener);
-                $callableXML->childNodes->item(0)->setAttribute('priority', $priority);
+        foreach ($eventListeners as $listener) {
+            $callableXML = $this->getCallableDocument($listener);
+            $callableXML->childNodes->item(0)->setAttribute('priority', $eventDispatcher->getListenerPriority($event, $listener));
 
-                $element->appendChild($element->ownerDocument->importNode($callableXML->childNodes->item(0), true));
-            }
+            $element->appendChild($element->ownerDocument->importNode($callableXML->childNodes->item(0), true));
         }
     }
 

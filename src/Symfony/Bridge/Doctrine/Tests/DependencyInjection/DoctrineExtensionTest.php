@@ -2,12 +2,12 @@
 
 /*
  * This file is part of the Symfony package.
-*
-* (c) Fabien Potencier <fabien@symfony.com>
-*
-* For the full copyright and license information, please view the LICENSE
-* file that was distributed with this source code.
-*/
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 
 namespace Symfony\Bridge\Doctrine\Tests\DependencyInjection;
 
@@ -49,7 +49,7 @@ class DoctrineExtensionTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException LogicException
+     * @expectedException \LogicException
      */
     public function testFixManagersAutoMappingsWithTwoAutomappings()
     {
@@ -162,10 +162,10 @@ class DoctrineExtensionTest extends \PHPUnit_Framework_TestCase
 
         $newEmConfigs = $method->invoke($this->extension, $emConfigs, $bundles);
 
-        $this->assertEquals($newEmConfigs["em1"], array_merge(array(
+        $this->assertEquals($newEmConfigs['em1'], array_merge(array(
             'auto_mapping' => false,
         ), $expectedEm1));
-        $this->assertEquals($newEmConfigs["em2"], array_merge(array(
+        $this->assertEquals($newEmConfigs['em2'], array_merge(array(
             'auto_mapping' => false,
         ), $expectedEm2));
     }
@@ -174,6 +174,7 @@ class DoctrineExtensionTest extends \PHPUnit_Framework_TestCase
     {
         return array(
             array('doctrine.orm.cache.apc.class',       array('type' => 'apc')),
+            array('doctrine.orm.cache.apcu.class',      array('type' => 'apcu')),
             array('doctrine.orm.cache.array.class',     array('type' => 'array')),
             array('doctrine.orm.cache.xcache.class',    array('type' => 'xcache')),
             array('doctrine.orm.cache.wincache.class',  array('type' => 'wincache')),
@@ -239,7 +240,7 @@ class DoctrineExtensionTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException InvalidArgumentException
+     * @expectedException \InvalidArgumentException
      * @expectedExceptionMessage "unrecognized_type" is an unrecognized Doctrine cache driver.
      */
     public function testUnrecognizedCacheDriverException()
