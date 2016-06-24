@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\HttpKernel\Tests\Fragment;
 
+use Symfony\Bridge\PhpUnit\ErrorAssert;
 use Symfony\Component\HttpKernel\Controller\ControllerReference;
 use Symfony\Component\HttpKernel\Fragment\EsiFragmentRenderer;
 use Symfony\Component\HttpKernel\HttpCache\Esi;
@@ -19,16 +20,23 @@ use Symfony\Component\HttpKernel\UriSigner;
 
 class EsiFragmentRendererTest extends \PHPUnit_Framework_TestCase
 {
-    public function testRenderFallbackToInlineStrategyIfNoRequest()
+    public function testRenderFallbackToInlineStrategyIfEsiNotSupported()
     {
         $strategy = new EsiFragmentRenderer(new Esi(), $this->getInlineStrategy(true));
         $strategy->render('/', Request::create('/'));
     }
 
-    public function testRenderFallbackToInlineStrategyIfEsiNotSupported()
+    /**
+     * @group legacy
+     */
+    public function testRenderFallbackWithObjectAttributesIsDeprecated()
     {
-        $strategy = new EsiFragmentRenderer(new Esi(), $this->getInlineStrategy(true));
-        $strategy->render('/', Request::create('/'));
+        ErrorAssert::assertDeprecationsAreTriggered('Passing objects as part of URI attributes to the ESI and SSI rendering strategies is deprecated', function () {
+            $strategy = new EsiFragmentRenderer(new Esi(), $this->getInlineStrategy(true), new UriSigner('foo'));
+            $request = Request::create('/');
+            $reference = new ControllerReference('main_controller', array('foo' => array('a' => array(), 'b' => new \stdClass())), array());
+            $strategy->render($reference, $request);
+        });
     }
 
     public function testRender()

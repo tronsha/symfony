@@ -11,7 +11,6 @@
 
 namespace Symfony\Component\Validator\Constraints;
 
-use Symfony\Component\Validator\Context\ExecutionContextInterface;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
@@ -70,7 +69,8 @@ class CardSchemeValidator extends ConstraintValidator
         'MAESTRO' => array(
             '/^(6759[0-9]{2})[0-9]{6,13}$/',
             '/^(50[0-9]{4})[0-9]{6,13}$/',
-            '/^([56-69][0-9]{4})[0-9]{6,13}$/',
+            '/^5[6-9][0-9]{10,17}$/',
+            '/^6[0-9]{11,18}$/',
         ),
         // All MasterCard numbers start with the numbers 51 through 55. All have 16 digits.
         'MASTERCARD' => array(
@@ -99,17 +99,10 @@ class CardSchemeValidator extends ConstraintValidator
         }
 
         if (!is_numeric($value)) {
-            if ($this->context instanceof ExecutionContextInterface) {
-                $this->context->buildViolation($constraint->message)
-                    ->setParameter('{{ value }}', $this->formatValue($value))
-                    ->setCode(CardScheme::NOT_NUMERIC_ERROR)
-                    ->addViolation();
-            } else {
-                $this->buildViolation($constraint->message)
-                    ->setParameter('{{ value }}', $this->formatValue($value))
-                    ->setCode(CardScheme::NOT_NUMERIC_ERROR)
-                    ->addViolation();
-            }
+            $this->context->buildViolation($constraint->message)
+                ->setParameter('{{ value }}', $this->formatValue($value))
+                ->setCode(CardScheme::NOT_NUMERIC_ERROR)
+                ->addViolation();
 
             return;
         }
@@ -125,16 +118,9 @@ class CardSchemeValidator extends ConstraintValidator
             }
         }
 
-        if ($this->context instanceof ExecutionContextInterface) {
-            $this->context->buildViolation($constraint->message)
-                ->setParameter('{{ value }}', $this->formatValue($value))
-                ->setCode(CardScheme::INVALID_FORMAT_ERROR)
-                ->addViolation();
-        } else {
-            $this->buildViolation($constraint->message)
-                ->setParameter('{{ value }}', $this->formatValue($value))
-                ->setCode(CardScheme::INVALID_FORMAT_ERROR)
-                ->addViolation();
-        }
+        $this->context->buildViolation($constraint->message)
+            ->setParameter('{{ value }}', $this->formatValue($value))
+            ->setCode(CardScheme::INVALID_FORMAT_ERROR)
+            ->addViolation();
     }
 }

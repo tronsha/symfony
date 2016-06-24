@@ -40,7 +40,7 @@ class ConfigDumpReferenceCommand extends AbstractConfigCommand
                 new InputOption('format', null, InputOption::VALUE_REQUIRED, 'The output format (yaml or xml)', 'yaml'),
             ))
             ->setDescription('Dumps the default configuration for an extension')
-            ->setHelp(<<<EOF
+            ->setHelp(<<<'EOF'
 The <info>%command.name%</info> command dumps the default configuration for an
 extension/bundle.
 
@@ -67,11 +67,11 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $output = new SymfonyStyle($input, $output);
-        $name = $input->getArgument('name');
+        $io = new SymfonyStyle($input, $output);
 
-        if (empty($name)) {
-            $this->listBundles($output);
+        if (null === $name = $input->getArgument('name')) {
+            $this->listBundles($io);
+            $io->comment('Provide the name of a bundle as the first argument of this command to dump its default configuration. (e.g. <comment>config:dump-reference FrameworkBundle</comment>)');
 
             return;
         }
@@ -90,18 +90,18 @@ EOF
 
         switch ($input->getOption('format')) {
             case 'yaml':
-                $output->writeln(sprintf('# %s', $message));
+                $io->writeln(sprintf('# %s', $message));
                 $dumper = new YamlReferenceDumper();
                 break;
             case 'xml':
-                $output->writeln(sprintf('<!-- %s -->', $message));
+                $io->writeln(sprintf('<!-- %s -->', $message));
                 $dumper = new XmlReferenceDumper();
                 break;
             default:
-                $output->writeln($message);
+                $io->writeln($message);
                 throw new \InvalidArgumentException('Only the yaml and xml formats are supported.');
         }
 
-        $output->writeln($dumper->dump($configuration, $extension->getNamespace()));
+        $io->writeln($dumper->dump($configuration, $extension->getNamespace()));
     }
 }

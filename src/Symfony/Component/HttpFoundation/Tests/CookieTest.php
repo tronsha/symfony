@@ -18,6 +18,8 @@ use Symfony\Component\HttpFoundation\Cookie;
  *
  * @author John Kary <john@johnkary.net>
  * @author Hugo Hamon <hugo.hamon@sensio.com>
+ *
+ * @group time-sensitive
  */
 class CookieTest extends \PHPUnit_Framework_TestCase
 {
@@ -39,7 +41,6 @@ class CookieTest extends \PHPUnit_Framework_TestCase
     /**
      * @dataProvider invalidNames
      * @expectedException \InvalidArgumentException
-     * @covers Symfony\Component\HttpFoundation\Cookie::__construct
      */
     public function testInstantiationThrowsExceptionIfCookieNameContainsInvalidCharacters($name)
     {
@@ -54,9 +55,6 @@ class CookieTest extends \PHPUnit_Framework_TestCase
         $cookie = new Cookie('MyCookie', 'foo', 'bar');
     }
 
-    /**
-     * @covers Symfony\Component\HttpFoundation\Cookie::getValue
-     */
     public function testGetValue()
     {
         $value = 'MyValue';
@@ -87,13 +85,24 @@ class CookieTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expire->format('U'), $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
     }
 
+    /**
+     * @requires PHP 5.5
+     */
+    public function testConstructorWithDateTimeImmutable()
+    {
+        $expire = new \DateTimeImmutable();
+        $cookie = new Cookie('foo', 'bar', $expire);
+
+        $this->assertEquals($expire->format('U'), $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
+    }
+
     public function testGetExpiresTimeWithStringValue()
     {
         $value = '+1 day';
         $cookie = new Cookie('foo', 'bar', $value);
         $expire = strtotime($value);
 
-        $this->assertEquals($expire, $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date');
+        $this->assertEquals($expire, $cookie->getExpiresTime(), '->getExpiresTime() returns the expire date', 1);
     }
 
     public function testGetDomain()
@@ -141,5 +150,14 @@ class CookieTest extends \PHPUnit_Framework_TestCase
 
         $cookie = new Cookie('foo', 'bar', 0, '/', '');
         $this->assertEquals('foo=bar; path=/; httponly', $cookie->__toString());
+    }
+
+    public function testRawCookie()
+    {
+        $cookie = new Cookie('foo', 'bar', 3600, '/', '.myfoodomain.com', false, true);
+        $this->assertFalse($cookie->isRaw());
+
+        $cookie = new Cookie('foo', 'bar', 3600, '/', '.myfoodomain.com', false, true, true);
+        $this->assertTrue($cookie->isRaw());
     }
 }

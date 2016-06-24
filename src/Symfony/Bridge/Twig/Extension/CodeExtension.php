@@ -32,7 +32,7 @@ class CodeExtension extends \Twig_Extension
     public function __construct($fileLinkFormat, $rootDir, $charset)
     {
         $this->fileLinkFormat = $fileLinkFormat ?: ini_get('xdebug.file_link_format') ?: get_cfg_var('xdebug.file_link_format');
-        $this->rootDir = str_replace('\\', '/', dirname($rootDir)).'/';
+        $this->rootDir = str_replace('/', DIRECTORY_SEPARATOR, dirname($rootDir)).DIRECTORY_SEPARATOR;
         $this->charset = $charset;
     }
 
@@ -163,22 +163,18 @@ class CodeExtension extends \Twig_Extension
         $file = trim($file);
 
         if (null === $text) {
-            $text = str_replace('\\', '/', $file);
+            $text = str_replace('/', DIRECTORY_SEPARATOR, $file);
             if (0 === strpos($text, $this->rootDir)) {
                 $text = substr($text, strlen($this->rootDir));
-                $text = explode('/', $text, 2);
-                $text = sprintf('<abbr title="%s%2$s">%s</abbr>%s', $this->rootDir, $text[0], isset($text[1]) ? '/'.$text[1] : '');
+                $text = explode(DIRECTORY_SEPARATOR, $text, 2);
+                $text = sprintf('<abbr title="%s%2$s">%s</abbr>%s', $this->rootDir, $text[0], isset($text[1]) ? DIRECTORY_SEPARATOR.$text[1] : '');
             }
         }
 
         $text = "$text at line $line";
 
         if (false !== $link = $this->getFileLink($file, $line)) {
-            if (PHP_VERSION_ID >= 50400) {
-                $flags = ENT_QUOTES | ENT_SUBSTITUTE;
-            } else {
-                $flags = ENT_QUOTES;
-            }
+            $flags = ENT_QUOTES | ENT_SUBSTITUTE;
 
             return sprintf('<a href="%s" title="Click to open this file" class="file_link">%s</a>', htmlspecialchars($link, $flags, $this->charset), $text);
         }
@@ -205,10 +201,8 @@ class CodeExtension extends \Twig_Extension
 
     public function formatFileFromText($text)
     {
-        $that = $this;
-
-        return preg_replace_callback('/in ("|&quot;)?(.+?)\1(?: +(?:on|at))? +line (\d+)/s', function ($match) use ($that) {
-            return 'in '.$that->formatFile($match[2], $match[3]);
+        return preg_replace_callback('/in ("|&quot;)?(.+?)\1(?: +(?:on|at))? +line (\d+)/s', function ($match) {
+            return 'in '.$this->formatFile($match[2], $match[3]);
         }, $text);
     }
 

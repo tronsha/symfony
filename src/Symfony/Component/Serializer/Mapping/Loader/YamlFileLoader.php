@@ -26,7 +26,7 @@ class YamlFileLoader extends FileLoader
     private $yamlParser;
 
     /**
-     * An array of YAML class descriptions
+     * An array of YAML class descriptions.
      *
      * @var array
      */
@@ -65,6 +65,7 @@ class YamlFileLoader extends FileLoader
 
             if (isset($yaml['attributes']) && is_array($yaml['attributes'])) {
                 $attributesMetadata = $classMetadata->getAttributesMetadata();
+
                 foreach ($yaml['attributes'] as $attribute => $data) {
                     if (isset($attributesMetadata[$attribute])) {
                         $attributeMetadata = $attributesMetadata[$attribute];
@@ -74,9 +75,25 @@ class YamlFileLoader extends FileLoader
                     }
 
                     if (isset($data['groups'])) {
+                        if (!is_array($data['groups'])) {
+                            throw new MappingException('The "groups" key must be an array of strings in "%s" for the attribute "%s" of the class "%s".', $this->file, $attribute, $classMetadata->getName());
+                        }
+
                         foreach ($data['groups'] as $group) {
+                            if (!is_string($group)) {
+                                throw new MappingException('Group names must be strings in "%s" for the attribute "%s" of the class "%s".', $this->file, $attribute, $classMetadata->getName());
+                            }
+
                             $attributeMetadata->addGroup($group);
                         }
+                    }
+
+                    if (isset($data['max_depth'])) {
+                        if (!is_int($data['max_depth'])) {
+                            throw new MappingException('The "max_depth" value must an integer  in "%s" for the attribute "%s" of the class "%s".', $this->file, $attribute, $classMetadata->getName());
+                        }
+
+                        $attributeMetadata->setMaxDepth($data['max_depth']);
                     }
                 }
             }

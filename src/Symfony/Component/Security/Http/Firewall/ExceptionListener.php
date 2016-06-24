@@ -22,6 +22,7 @@ use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Exception\InsufficientAuthenticationException;
 use Symfony\Component\Security\Core\Exception\LogoutException;
+use Symfony\Component\Security\Http\Util\TargetPathTrait;
 use Symfony\Component\Security\Http\HttpUtils;
 use Symfony\Component\HttpFoundation\Request;
 use Psr\Log\LoggerInterface;
@@ -39,6 +40,8 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  */
 class ExceptionListener
 {
+    use TargetPathTrait;
+
     private $tokenStorage;
     private $providerKey;
     private $accessDeniedHandler;
@@ -47,8 +50,9 @@ class ExceptionListener
     private $errorPage;
     private $logger;
     private $httpUtils;
+    private $stateless;
 
-    public function __construct(TokenStorageInterface $tokenStorage, AuthenticationTrustResolverInterface $trustResolver, HttpUtils $httpUtils, $providerKey, AuthenticationEntryPointInterface $authenticationEntryPoint = null, $errorPage = null, AccessDeniedHandlerInterface $accessDeniedHandler = null, LoggerInterface $logger = null)
+    public function __construct(TokenStorageInterface $tokenStorage, AuthenticationTrustResolverInterface $trustResolver, HttpUtils $httpUtils, $providerKey, AuthenticationEntryPointInterface $authenticationEntryPoint = null, $errorPage = null, AccessDeniedHandlerInterface $accessDeniedHandler = null, LoggerInterface $logger = null, $stateless = false)
     {
         $this->tokenStorage = $tokenStorage;
         $this->accessDeniedHandler = $accessDeniedHandler;
@@ -58,6 +62,7 @@ class ExceptionListener
         $this->authenticationTrustResolver = $trustResolver;
         $this->errorPage = $errorPage;
         $this->logger = $logger;
+        $this->stateless = $stateless;
     }
 
     /**
@@ -185,7 +190,9 @@ class ExceptionListener
             $this->logger->debug('Calling Authentication entry point.');
         }
 
-        $this->setTargetPath($request);
+        if (!$this->stateless) {
+            $this->setTargetPath($request);
+        }
 
         if ($authException instanceof AccountStatusException) {
             // remove the security token to prevent infinite redirect loops
@@ -196,7 +203,15 @@ class ExceptionListener
             }
         }
 
-        return $this->authenticationEntryPoint->start($request, $authException);
+        $response = $this->authenticationEntryPoint->start($request, $authException);
+
+        if (!$response instanceof Response) {
+            $given = is_object($response) ? get_class($response) : gettype($response);
+
+            throw new \LogicException(sprintf('The %s::start() method must return a Response object (%s returned)', get_class($this->authenticationEntryPoint), $given));
+        }
+
+        return $response;
     }
 
     /**
@@ -206,7 +221,7 @@ class ExceptionListener
     {
         // session isn't required when using HTTP basic authentication mechanism for example
         if ($request->hasSession() && $request->isMethodSafe() && !$request->isXmlHttpRequest()) {
-            $request->getSession()->set('_security.'.$this->providerKey.'.target_path', $request->getUri());
+            $this->saveTargetPath($request->getSession(), $this->providerKey, $request->getUri());
         }
     }
 }
