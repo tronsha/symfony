@@ -11,9 +11,9 @@
 
 namespace Symfony\Component\Security\Core\Tests;
 
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
-use Symfony\Component\Security\Core\Authorization\AuthorizationChecker;
+use Symfony\Component\Security\Core\Security;
 use Symfony\Component\Security\Core\SecurityContext;
+use Symfony\Component\Security\Core\SecurityContextInterface;
 
 /**
  * @group legacy
@@ -81,7 +81,7 @@ class LegacySecurityContextTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * Test dedicated to check if the backwards compatibility is still working
+     * Test dedicated to check if the backwards compatibility is still working.
      */
     public function testOldConstructorSignature()
     {
@@ -118,5 +118,15 @@ class LegacySecurityContextTest extends \PHPUnit_Framework_TestCase
             array(null, false),
             array(true, null),
         );
+    }
+
+    /**
+     * Test if the BC Layer is working as intended.
+     */
+    public function testConstantSync()
+    {
+        $this->assertSame(Security::ACCESS_DENIED_ERROR, SecurityContextInterface::ACCESS_DENIED_ERROR);
+        $this->assertSame(Security::AUTHENTICATION_ERROR, SecurityContextInterface::AUTHENTICATION_ERROR);
+        $this->assertSame(Security::LAST_USERNAME, SecurityContextInterface::LAST_USERNAME);
     }
 }

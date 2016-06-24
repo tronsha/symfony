@@ -13,6 +13,7 @@ namespace Symfony\Component\Debug\Tests;
 
 use Psr\Log\LogLevel;
 use Symfony\Component\Debug\ErrorHandler;
+use Symfony\Component\Debug\BufferingLogger;
 use Symfony\Component\Debug\Exception\ContextErrorException;
 
 /**
@@ -77,7 +78,7 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
 
             $this->assertEquals(E_NOTICE, $exception->getSeverity());
             $this->assertEquals(__FILE__, $exception->getFile());
-            $this->assertRegexp('/^Notice: Undefined variable: (foo|bar)/', $exception->getMessage());
+            $this->assertRegExp('/^Notice: Undefined variable: (foo|bar)/', $exception->getMessage());
             $this->assertArrayHasKey('foobar', $exception->getContext());
 
             $trace = $exception->getTrace();
@@ -295,6 +296,28 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
         }
     }
 
+    public function testHandleDeprecation()
+    {
+        $that = $this;
+        $logArgCheck = function ($level, $message, $context) use ($that) {
+            $that->assertEquals(LogLevel::INFO, $level);
+            $that->assertArrayHasKey('level', $context);
+            $that->assertEquals(E_RECOVERABLE_ERROR | E_USER_ERROR | E_DEPRECATED | E_USER_DEPRECATED, $context['level']);
+            $that->assertArrayHasKey('stack', $context);
+        };
+
+        $logger = $this->getMock('Psr\Log\LoggerInterface');
+        $logger
+            ->expects($this->once())
+            ->method('log')
+            ->will($this->returnCallback($logArgCheck))
+        ;
+
+        $handler = new ErrorHandler();
+        $handler->setDefaultLogger($logger);
+        @$handler->handleError(E_USER_DEPRECATED, 'Foo deprecation', __FILE__, __LINE__, array());
+    }
+
     public function testHandleException()
     {
         try {
@@ -377,6 +400,49 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
         }
     }
 
+    public function testBootstrappingLogger()
+    {
+        $bootLogger = new BufferingLogger();
+        $handler = new ErrorHandler($bootLogger);
+
+        $loggers = array(
+            E_DEPRECATED => array($bootLogger, LogLevel::INFO),
+            E_USER_DEPRECATED => array($bootLogger, LogLevel::INFO),
+            E_NOTICE => array($bootLogger, LogLevel::WARNING),
+            E_USER_NOTICE => array($bootLogger, LogLevel::WARNING),
+            E_STRICT => array($bootLogger, LogLevel::WARNING),
+            E_WARNING => array($bootLogger, LogLevel::WARNING),
+            E_USER_WARNING => array($bootLogger, LogLevel::WARNING),
+            E_COMPILE_WARNING => array($bootLogger, LogLevel::WARNING),
+            E_CORE_WARNING => array($bootLogger, LogLevel::WARNING),
+            E_USER_ERROR => array($bootLogger, LogLevel::CRITICAL),
+            E_RECOVERABLE_ERROR => array($bootLogger, LogLevel::CRITICAL),
+            E_COMPILE_ERROR => array($bootLogger, LogLevel::CRITICAL),
+            E_PARSE => array($bootLogger, LogLevel::CRITICAL),
+            E_ERROR => array($bootLogger, LogLevel::CRITICAL),
+            E_CORE_ERROR => array($bootLogger, LogLevel::CRITICAL),
+        );
+
+        $this->assertSame($loggers, $handler->setLoggers(array()));
+
+        $handler->handleError(E_DEPRECATED, 'Foo message', __FILE__, 123, array());
+        $expectedLog = array(LogLevel::INFO, 'Foo message', array('type' => E_DEPRECATED, 'file' => __FILE__, 'line' => 123, 'level' => error_reporting()));
+
+        $logs = $bootLogger->cleanLogs();
+        unset($logs[0][2]['stack']);
+
+        $this->assertSame(array($expectedLog), $logs);
+
+        $bootLogger->log($expectedLog[0], $expectedLog[1], $expectedLog[2]);
+
+        $mockLogger = $this->getMock('Psr\Log\LoggerInterface');
+        $mockLogger->expects($this->once())
+            ->method('log')
+            ->with(LogLevel::WARNING, 'Foo message', $expectedLog[2]);
+
+        $handler->setLoggers(array(E_DEPRECATED => array($mockLogger, LogLevel::WARNING)));
+    }
+
     public function testHandleFatalError()
     {
         try {
@@ -416,6 +482,24 @@ class ErrorHandlerTest extends \PHPUnit_Framework_TestCase
 
             throw $e;
         }
+    }
+
+    /**
+     * @requires PHP 7
+     */
+    public function testHandleErrorException()
+    {
+        $exception = new \Error("Class 'Foo' not found");
+
+        $handler = new ErrorHandler();
+        $handler->setExceptionHandler(function () use (&$args) {
+            $args = func_get_args();
+        });
+
+        $handler->handleException($exception);
+
+        $this->assertInstanceOf('Symfony\Component\Debug\Exception\ClassNotFoundException', $args[0]);
+        $this->assertStringStartsWith("Attempted to load class \"Foo\" from the global namespace.\nDid you forget a \"use\" statement", $args[0]->getMessage());
     }
 
     public function testHandleFatalErrorOnHHVM()

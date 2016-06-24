@@ -35,7 +35,6 @@ class JsonEncode implements EncoderInterface
      *
      * @deprecated since version 2.5, to be removed in 3.0.
      *             The {@self encode()} throws an exception if error found.
-     *
      * @see http://php.net/manual/en/function.json-last-error.php json_last_error
      */
     public function getLastError()
@@ -57,7 +56,7 @@ class JsonEncode implements EncoderInterface
         $encodedJson = json_encode($data, $context['json_encode_options']);
 
         if (JSON_ERROR_NONE !== $this->lastError = json_last_error()) {
-            throw new UnexpectedValueException(JsonEncoder::getLastErrorMessage());
+            throw new UnexpectedValueException(json_last_error_msg());
         }
 
         return $encodedJson;

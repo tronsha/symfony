@@ -86,7 +86,7 @@ class LogoutUrlGenerator
      * Generates the logout URL for the firewall.
      *
      * @param string|null $key           The firewall key or null to use the current firewall key
-     * @param bool|string $referenceType The type of reference (one of the constants in UrlGeneratorInterface)
+     * @param int         $referenceType The type of reference (one of the constants in UrlGeneratorInterface)
      *
      * @return string The logout URL
      *
@@ -121,7 +121,7 @@ class LogoutUrlGenerator
 
             $request = $this->requestStack->getCurrentRequest();
 
-            $url = UrlGeneratorInterface::ABSOLUTE_URL === $referenceType ? $request->getUriForPath($logoutPath) : $request->getBasePath().$logoutPath;
+            $url = UrlGeneratorInterface::ABSOLUTE_URL === $referenceType ? $request->getUriForPath($logoutPath) : $request->getBaseUrl().$logoutPath;
 
             if (!empty($parameters)) {
                 $url .= '?'.http_build_query($parameters);

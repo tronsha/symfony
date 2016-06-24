@@ -15,6 +15,7 @@ use Symfony\Component\Form\ChoiceList\ArrayChoiceList;
 use Symfony\Component\Form\ChoiceList\ChoiceListInterface;
 use Symfony\Component\Form\ChoiceList\Factory\DefaultChoiceListFactory;
 use Symfony\Component\Form\ChoiceList\LazyChoiceList;
+use Symfony\Component\Form\ChoiceList\LegacyChoiceListAdapter;
 use Symfony\Component\Form\ChoiceList\View\ChoiceGroupView;
 use Symfony\Component\Form\ChoiceList\View\ChoiceListView;
 use Symfony\Component\Form\ChoiceList\View\ChoiceView;
@@ -75,6 +76,13 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
     public function getGroup($object)
     {
         return $this->obj1 === $object || $this->obj2 === $object ? 'Group 1' : 'Group 2';
+    }
+
+    public function getGroupAsObject($object)
+    {
+        return $this->obj1 === $object || $this->obj2 === $object
+            ? new DefaultChoiceListFactoryTest_Castable('Group 1')
+            : new DefaultChoiceListFactoryTest_Castable('Group 2');
     }
 
     protected function setUp()
@@ -185,6 +193,9 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
         $this->assertObjectListWithCustomValues($list);
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesEmpty()
     {
         $list = $this->factory->createListFromFlippedChoices(array());
@@ -193,24 +204,33 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
         $this->assertSame(array(), $list->getValues());
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesFlat()
     {
         $list = $this->factory->createListFromFlippedChoices(
             array('a' => 'A', 'b' => 'B', 'c' => 'C', 'd' => 'D')
         );
 
-        $this->assertScalarListWithGeneratedValues($list);
+        $this->assertScalarListWithChoiceValues($list);
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesFlatTraversable()
     {
         $list = $this->factory->createListFromFlippedChoices(
             new \ArrayIterator(array('a' => 'A', 'b' => 'B', 'c' => 'C', 'd' => 'D'))
         );
 
-        $this->assertScalarListWithGeneratedValues($list);
+        $this->assertScalarListWithChoiceValues($list);
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesFlatValuesAsCallable()
     {
         $list = $this->factory->createListFromFlippedChoices(
@@ -221,6 +241,9 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
         $this->assertScalarListWithCustomValues($list);
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesFlatValuesAsClosure()
     {
         $list = $this->factory->createListFromFlippedChoices(
@@ -238,6 +261,9 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
         $this->assertScalarListWithCustomValues($list);
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesGrouped()
     {
         $list = $this->factory->createListFromFlippedChoices(
@@ -247,9 +273,12 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
             )
         );
 
-        $this->assertScalarListWithGeneratedValues($list);
+        $this->assertScalarListWithChoiceValues($list);
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesGroupedTraversable()
     {
         $list = $this->factory->createListFromFlippedChoices(
@@ -259,9 +288,12 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
                 ))
         );
 
-        $this->assertScalarListWithGeneratedValues($list);
+        $this->assertScalarListWithChoiceValues($list);
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesGroupedValuesAsCallable()
     {
         $list = $this->factory->createListFromFlippedChoices(
@@ -275,6 +307,9 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
         $this->assertScalarListWithCustomValues($list);
     }
 
+    /**
+     * @group legacy
+     */
     public function testCreateFromFlippedChoicesGroupedValuesAsClosure()
     {
         $list = $this->factory->createListFromFlippedChoices(
@@ -523,33 +558,17 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
         $this->assertFlatViewWithCustomIndices($view);
     }
 
-    public function testCreateViewFlatGroupByAsArray()
+    public function testCreateViewFlatGroupByOriginalStructure()
     {
-        $view = $this->factory->createView(
-            $this->list,
-            array($this->obj2, $this->obj3),
-            null, // label
-            null, // index
-            array(
-                'Group 1' => array('A' => true, 'B' => true),
-                'Group 2' => array('C' => true, 'D' => true),
-            )
-        );
+        $list = new ArrayChoiceList(array(
+            'Group 1' => array('A' => $this->obj1, 'B' => $this->obj2),
+            'Group 2' => array('C' => $this->obj3, 'D' => $this->obj4),
+            'Group empty' => array(),
+        ));
 
-        $this->assertGroupedView($view);
-    }
-
-    public function testCreateViewFlatGroupByAsTraversable()
-    {
         $view = $this->factory->createView(
-            $this->list,
-            array($this->obj2, $this->obj3),
-            null, // label
-            null, // index
-            new \ArrayIterator(array(
-                'Group 1' => array('A' => true, 'B' => true),
-                'Group 2' => array('C' => true, 'D' => true),
-            ))
+            $list,
+            array($this->obj2, $this->obj3)
         );
 
         $this->assertGroupedView($view);
@@ -581,6 +600,19 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
         $this->assertGroupedView($view);
     }
 
+    public function testCreateViewFlatGroupByObjectThatCanBeCastToString()
+    {
+        $view = $this->factory->createView(
+            $this->list,
+            array($this->obj2, $this->obj3),
+            null, // label
+            null, // index
+            array($this, 'getGroupAsObject')
+        );
+
+        $this->assertGroupedView($view);
+    }
+
     public function testCreateViewFlatGroupByAsClosure()
     {
         $obj1 = $this->obj1;
@@ -592,8 +624,7 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
             null, // label
             null, // index
             function ($object) use ($obj1, $obj2) {
-                return $obj1 === $object || $obj2 === $object ? 'Group 1'
-                    : 'Group 2';
+                return $obj1 === $object || $obj2 === $object ? 'Group 1' : 'Group 2';
             }
         );
 
@@ -734,7 +765,7 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
     /**
      * @group legacy
      */
-    public function testCreateViewForLegacyChoiceList()
+    public function testCreateViewForFlatLegacyChoiceList()
     {
         // legacy ChoiceList instances provide legacy ChoiceView objects
         $preferred = array(new LegacyChoiceView('x', 'x', 'Preferred'));
@@ -749,78 +780,116 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
             ->method('getRemainingViews')
             ->will($this->returnValue($other));
 
-        $view = $this->factory->createView($list);
+        $view = $this->factory->createView(new LegacyChoiceListAdapter($list));
 
         $this->assertEquals(array(new ChoiceView('y', 'y', 'Other')), $view->choices);
         $this->assertEquals(array(new ChoiceView('x', 'x', 'Preferred')), $view->preferredChoices);
     }
 
-    private function assertScalarListWithGeneratedValues(ChoiceListInterface $list)
+    /**
+     * @group legacy
+     */
+    public function testCreateViewForNestedLegacyChoiceList()
     {
+        // legacy ChoiceList instances provide legacy ChoiceView objects
+        $preferred = array('Section 1' => array(new LegacyChoiceView('x', 'x', 'Preferred')));
+        $other = array(
+            'Section 2' => array(new LegacyChoiceView('y', 'y', 'Other')),
+            new LegacyChoiceView('z', 'z', 'Other one'),
+        );
+
+        $list = $this->getMock('Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceListInterface');
+
+        $list->expects($this->once())
+            ->method('getPreferredViews')
+            ->will($this->returnValue($preferred));
+        $list->expects($this->once())
+            ->method('getRemainingViews')
+            ->will($this->returnValue($other));
+
+        $view = $this->factory->createView(new LegacyChoiceListAdapter($list));
+
+        $this->assertEquals(array(
+            'Section 2' => array(new ChoiceView('y', 'y', 'Other')),
+            new ChoiceView('z', 'z', 'Other one'),
+        ), $view->choices);
+        $this->assertEquals(array('Section 1' => array(new ChoiceView('x', 'x', 'Preferred'))), $view->preferredChoices);
+    }
+
+    private function assertScalarListWithChoiceValues(ChoiceListInterface $list)
+    {
+        $this->assertSame(array('a', 'b', 'c', 'd'), $list->getValues());
+
         $this->assertSame(array(
-            'A' => 'a',
-            'B' => 'b',
-            'C' => 'c',
-            'D' => 'd',
+            'a' => 'a',
+            'b' => 'b',
+            'c' => 'c',
+            'd' => 'd',
         ), $list->getChoices());
 
         $this->assertSame(array(
-            'A' => 'a',
-            'B' => 'b',
-            'C' => 'c',
-            'D' => 'd',
-        ), $list->getValues());
+            'a' => 'A',
+            'b' => 'B',
+            'c' => 'C',
+            'd' => 'D',
+        ), $list->getOriginalKeys());
     }
 
     private function assertObjectListWithGeneratedValues(ChoiceListInterface $list)
     {
+        $this->assertSame(array('0', '1', '2', '3'), $list->getValues());
+
         $this->assertSame(array(
-            'A' => $this->obj1,
-            'B' => $this->obj2,
-            'C' => $this->obj3,
-            'D' => $this->obj4,
+            0 => $this->obj1,
+            1 => $this->obj2,
+            2 => $this->obj3,
+            3 => $this->obj4,
         ), $list->getChoices());
 
         $this->assertSame(array(
-            'A' => '0',
-            'B' => '1',
-            'C' => '2',
-            'D' => '3',
-        ), $list->getValues());
+            0 => 'A',
+            1 => 'B',
+            2 => 'C',
+            3 => 'D',
+        ), $list->getOriginalKeys());
     }
 
     private function assertScalarListWithCustomValues(ChoiceListInterface $list)
     {
+        $this->assertSame(array('a', 'b', '1', '2'), $list->getValues());
+
         $this->assertSame(array(
-            'A' => 'a',
-            'B' => 'b',
-            'C' => 'c',
-            'D' => 'd',
+            'a' => 'a',
+            'b' => 'b',
+            1 => 'c',
+            2 => 'd',
         ), $list->getChoices());
 
         $this->assertSame(array(
-            'A' => 'a',
-            'B' => 'b',
-            'C' => '1',
-            'D' => '2',
-        ), $list->getValues());
+            'a' => 'A',
+            'b' => 'B',
+            1 => 'C',
+            2 => 'D',
+        ), $list->getOriginalKeys());
     }
 
     private function assertObjectListWithCustomValues(ChoiceListInterface $list)
     {
+        $this->assertSame(array('a', 'b', '1', '2'), $list->getValues());
+
         $this->assertSame(array(
-            'A' => $this->obj1,
-            'B' => $this->obj2,
-            'C' => $this->obj3,
-            'D' => $this->obj4,
+            'a' => $this->obj1,
+            'b' => $this->obj2,
+            1 => $this->obj3,
+            2 => $this->obj4,
         ), $list->getChoices());
 
         $this->assertSame(array(
-            'A' => 'a',
-            'B' => 'b',
-            'C' => '1',
-            'D' => '2',
-        ), $list->getValues());
+            'a' => 'A',
+            'b' => 'B',
+            1 => 'C',
+            2 => 'D',
+        ), $list->getOriginalKeys());
     }
 
     private function assertFlatView($view)
@@ -895,5 +964,20 @@ class DefaultChoiceListFactoryTest extends \PHPUnit_Framework_TestCase
                     ),
                 )
         ), $view);
+    }
+}
+
+class DefaultChoiceListFactoryTest_Castable
+{
+    private $property;
+
+    public function __construct($property)
+    {
+        $this->property = $property;
+    }
+
+    public function __toString()
+    {
+        return $this->property;
     }
 }

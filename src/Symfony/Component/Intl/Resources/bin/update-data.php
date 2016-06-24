@@ -35,7 +35,7 @@ $argc = $_SERVER['argc'];
 $argv = $_SERVER['argv'];
 
 if ($argc > 3 || 2 === $argc && '-h' === $argv[1]) {
-    bailout(<<<MESSAGE
+    bailout(<<<'MESSAGE'
 Usage: php update-icu-component.php <path/to/icu/source> <path/to/icu/build>
 
 Updates the ICU data for Symfony to the latest version of ICU.
@@ -178,8 +178,7 @@ echo "Preparing resource bundle compilation (version $icuVersionInDownload)...\n
 $compiler = new GenrbCompiler($genrb, $genrbEnv);
 $config = new GeneratorConfig($sourceDir.'/data', $icuVersionInDownload);
 
-// Don't wrap "/data" in realpath(), in case the directory does not exist
-$baseDir = realpath(__DIR__.'/..').'/data';
+$baseDir = dirname(__DIR__).'/data';
 
 //$txtDir = $baseDir.'/txt';
 $jsonDir = $baseDir;

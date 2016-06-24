@@ -18,14 +18,16 @@
     "require": {
         "php": ">=5.3.9",
         "symfony/dependency-injection": "~2.8|~3.0.0",
-        "ocramius/proxy-manager": "~0.4|~1.0"
+        "ocramius/proxy-manager": "~0.4|~1.0|~2.0"
     },
     "require-dev": {
-        "symfony/phpunit-bridge": "~2.7|~3.0.0",
         "symfony/config": "~2.3|~3.0.0"
     },
     "autoload": {
-        "psr-4": { "Symfony\\Bridge\\ProxyManager\\": "" }
+        "psr-4": { "Symfony\\Bridge\\ProxyManager\\": "" },
+        "exclude-from-classmap": [
+            "/Tests/"
+        ]
     },
     "minimum-stability": "dev",
     "extra": {

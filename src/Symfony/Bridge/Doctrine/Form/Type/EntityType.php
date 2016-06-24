@@ -12,6 +12,7 @@
 namespace Symfony\Bridge\Doctrine\Form\Type;
 
 use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\ORM\Query\Parameter;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bridge\Doctrine\Form\ChoiceList\ORMQueryBuilderLoader;
 use Symfony\Component\Form\Exception\UnexpectedTypeException;
@@ -30,7 +31,7 @@ class EntityType extends DoctrineType
             if (is_callable($queryBuilder)) {
                 $queryBuilder = call_user_func($queryBuilder, $options['em']->getRepository($options['class']));
 
-                if (!$queryBuilder instanceof QueryBuilder) {
+                if (null !== $queryBuilder && !$queryBuilder instanceof QueryBuilder) {
                     throw new UnexpectedTypeException($queryBuilder, 'Doctrine\ORM\QueryBuilder');
                 }
             }
@@ -56,7 +57,18 @@ class EntityType extends DoctrineType
         return new ORMQueryBuilderLoader($queryBuilder, $manager, $class);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getName()
+    {
+        return $this->getBlockPrefix();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getBlockPrefix()
     {
         return 'entity';
     }
@@ -64,19 +76,31 @@ class EntityType extends DoctrineType
     /**
      * We consider two query builders with an equal SQL string and
      * equal parameters to be equal.
-     * 
+     *
      * @param QueryBuilder $queryBuilder
-     * 
+     *
      * @return array
-     * 
+     *
      * @internal This method is public to be usable as callback. It should not
      *           be used in user code.
      */
     public function getQueryBuilderPartsForCachingHash($queryBuilder)
     {
         return array(
-                $queryBuilder->getQuery()->getSQL(),
-                $queryBuilder->getParameters()->toArray(),
+            $queryBuilder->getQuery()->getSQL(),
+            array_map(array($this, 'parameterToArray'), $queryBuilder->getParameters()->toArray()),
         );
+    }
+
+    /**
+     * Converts a query parameter to an array.
+     *
+     * @param Parameter $parameter The query parameter
+     *
+     * @return array The array representation of the parameter
+     */
+    private function parameterToArray(Parameter $parameter)
+    {
+        return array($parameter->getName(), $parameter->getType(), $parameter->getValue());
     }
 }

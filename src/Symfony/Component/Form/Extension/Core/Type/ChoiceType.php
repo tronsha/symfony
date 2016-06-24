@@ -12,7 +12,9 @@
 namespace Symfony\Component\Form\Extension\Core\Type;
 
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\ChoiceList\Factory\CachingFactoryDecorator;
 use Symfony\Component\Form\ChoiceList\Factory\PropertyAccessDecorator;
+use Symfony\Component\Form\ChoiceList\LegacyChoiceListAdapter;
 use Symfony\Component\Form\ChoiceList\View\ChoiceGroupView;
 use Symfony\Component\Form\ChoiceList\ChoiceListInterface;
 use Symfony\Component\Form\ChoiceList\Factory\DefaultChoiceListFactory;
@@ -27,6 +29,7 @@ use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
+use Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceListInterface as LegacyChoiceListInterface;
 use Symfony\Component\Form\Extension\Core\EventListener\MergeCollectionListener;
 use Symfony\Component\Form\Extension\Core\DataTransformer\ChoiceToValueTransformer;
 use Symfony\Component\Form\Extension\Core\DataTransformer\ChoicesToValuesTransformer;
@@ -44,7 +47,11 @@ class ChoiceType extends AbstractType
 
     public function __construct(ChoiceListFactoryInterface $choiceListFactory = null)
     {
-        $this->choiceListFactory = $choiceListFactory ?: new PropertyAccessDecorator(new DefaultChoiceListFactory());
+        $this->choiceListFactory = $choiceListFactory ?: new CachingFactoryDecorator(
+            new PropertyAccessDecorator(
+                new DefaultChoiceListFactory()
+            )
+        );
     }
 
     /**
@@ -53,9 +60,7 @@ class ChoiceType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         if ($options['expanded']) {
-            $builder->setDataMapper($options['multiple']
-                ? new CheckboxListMapper($options['choice_list'])
-                : new RadioListMapper($options['choice_list']));
+            $builder->setDataMapper($options['multiple'] ? new CheckboxListMapper() : new RadioListMapper());
 
             // Initialize all choices before doing the index check below.
             // This helps in cases where index checks are optimized for non
@@ -126,22 +131,13 @@ class ChoiceType extends AbstractType
 
                 $event->setData($data);
             });
+        }
 
-            if (!$options['multiple']) {
-                // For radio lists, transform empty arrays to null
-                // This is kind of a hack necessary because the RadioListMapper
-                // is not invoked for forms without choices
-                $builder->addEventListener(FormEvents::SUBMIT, function (FormEvent $event) {
-                    if (array() === $event->getData()) {
-                        $event->setData(null);
-                    }
-                });
-            }
-        } elseif ($options['multiple']) {
-            // <select> tag with "multiple" option
+        if ($options['multiple']) {
+            // <select> tag with "multiple" option or list of checkbox inputs
             $builder->addViewTransformer(new ChoicesToValuesTransformer($options['choice_list']));
         } else {
-            // <select> tag without "multiple" option
+            // <select> tag without "multiple" option or list of radio inputs
             $builder->addViewTransformer(new ChoiceToValueTransformer($options['choice_list']));
         }
 
@@ -192,7 +188,7 @@ class ChoiceType extends AbstractType
         }
 
         // Check if the choices already contain the empty value
-        $view->vars['placeholder_in_choices'] = 0 !== count($options['choice_list']->getChoicesForValues(array('')));
+        $view->vars['placeholder_in_choices'] = $choiceListView->hasPlaceholder();
 
         // Only add the empty value option if this is not the case
         if (null !== $options['placeholder'] && !$view->vars['placeholder_in_choices']) {
@@ -236,28 +232,78 @@ class ChoiceType extends AbstractType
      */
     public function configureOptions(OptionsResolver $resolver)
     {
+        $choiceLabels = (object) array('labels' => array());
         $choiceListFactory = $this->choiceListFactory;
 
         $emptyData = function (Options $options) {
-            if ($options['multiple'] || $options['expanded']) {
+            if ($options['expanded'] && !$options['multiple']) {
+                return;
+            }
+
+            if ($options['multiple']) {
                 return array();
             }
 
             return '';
         };
 
-        $emptyValue = function (Options $options) {
+        $placeholder = function (Options $options) {
             return $options['required'] ? null : '';
         };
 
-        // for BC with the "empty_value" option
-        $placeholder = function (Options $options) {
-            return $options['empty_value'];
+        // BC closure, to be removed in 3.0
+        $choicesNormalizer = function (Options $options, $choices) use ($choiceLabels) {
+            // Unset labels from previous invocations
+            $choiceLabels->labels = array();
+
+            // This closure is irrelevant when "choices_as_values" is set to true
+            if ($options['choices_as_values']) {
+                return $choices;
+            }
+
+            if (null === $choices) {
+                return;
+            }
+
+            return ChoiceType::normalizeLegacyChoices($choices, $choiceLabels);
         };
 
-        $choiceListNormalizer = function (Options $options, $choiceList) use ($choiceListFactory) {
+        // BC closure, to be removed in 3.0
+        $choiceLabel = function (Options $options) use ($choiceLabels) {
+            // If the choices contain duplicate labels, the normalizer of the
+            // "choices" option stores them in the $choiceLabels variable
+
+            // Trigger the normalizer
+            $options->offsetGet('choices');
+
+            // Pick labels from $choiceLabels if available
+            if ($choiceLabels->labels) {
+                // Don't pass the labels by reference. We do want to create a
+                // copy here so that every form has an own version of that
+                // variable (contrary to the $choiceLabels object shared by all
+                // forms)
+                $labels = $choiceLabels->labels;
+
+                // The $choiceLabels object is shared with the 'choices' closure.
+                // Since that normalizer can be replaced, labels have to be cleared here.
+                $choiceLabels->labels = array();
+
+                return function ($choice, $key) use ($labels) {
+                    return $labels[$key];
+                };
+            }
+
+            return;
+        };
+
+        $that = $this;
+        $choiceListNormalizer = function (Options $options, $choiceList) use ($choiceListFactory, $that) {
             if ($choiceList) {
-                @trigger_error('The "choice_list" option is deprecated since version 2.7 and will be removed in 3.0. Use "choice_loader" instead.', E_USER_DEPRECATED);
+                @trigger_error(sprintf('The "choice_list" option of the "%s" form type (%s) is deprecated since version 2.7 and will be removed in 3.0. Use "choice_loader" instead.', $that->getName(), __CLASS__), E_USER_DEPRECATED);
+
+                if ($choiceList instanceof LegacyChoiceListInterface) {
+                    return new LegacyChoiceListAdapter($choiceList);
+                }
 
                 return $choiceList;
             }
@@ -274,15 +320,34 @@ class ChoiceType extends AbstractType
 
             // BC when choices are in the keys, not in the values
             if (!$options['choices_as_values']) {
-                return $choiceListFactory->createListFromFlippedChoices($choices, $options['choice_value']);
+                return $choiceListFactory->createListFromFlippedChoices($choices, $options['choice_value'], false);
             }
 
             return $choiceListFactory->createListFromChoices($choices, $options['choice_value']);
         };
 
-        $placeholderNormalizer = function (Options $options, $placeholder) {
+        $choicesAsValuesNormalizer = function (Options $options, $choicesAsValues) use ($that) {
+            if (true !== $choicesAsValues) {
+                @trigger_error(sprintf('The value "false" for the "choices_as_values" option of the "%s" form type (%s) is deprecated since version 2.8 and will not be supported anymore in 3.0. Set this option to "true" and flip the contents of the "choices" option instead.', $that->getName(), __CLASS__), E_USER_DEPRECATED);
+            }
+
+            return $choicesAsValues;
+        };
+
+        $placeholderNormalizer = function (Options $options, $placeholder) use ($that) {
+            if (!is_object($options['empty_value']) || !$options['empty_value'] instanceof \Exception) {
+                @trigger_error(sprintf('The form option "empty_value" of the "%s" form type (%s) is deprecated since version 2.6 and will be removed in 3.0. Use "placeholder" instead.', $that->getName(), __CLASS__), E_USER_DEPRECATED);
+
+                if (null === $placeholder || '' === $placeholder) {
+                    $placeholder = $options['empty_value'];
+                }
+            }
+
             if ($options['multiple']) {
                 // never use an empty value for this case
+                return;
+            } elseif ($options['required'] && ($options['expanded'] || isset($options['attr']['size']) && $options['attr']['size'] > 1)) {
+                // placeholder for required radio buttons or a select with size > 1 does not make sense
                 return;
             } elseif (false === $placeholder) {
                 // an empty value should be added but the user decided otherwise
@@ -315,14 +380,14 @@ class ChoiceType extends AbstractType
             'choices' => array(),
             'choices_as_values' => false,
             'choice_loader' => null,
-            'choice_label' => null,
+            'choice_label' => $choiceLabel,
             'choice_name' => null,
             'choice_value' => null,
             'choice_attr' => null,
             'preferred_choices' => array(),
             'group_by' => null,
             'empty_data' => $emptyData,
-            'empty_value' => $emptyValue, // deprecated
+            'empty_value' => new \Exception(), // deprecated
             'placeholder' => $placeholder,
             'error_bubbling' => false,
             'compound' => $compound,
@@ -333,22 +398,23 @@ class ChoiceType extends AbstractType
             'choice_translation_domain' => true,
         ));
 
+        $resolver->setNormalizer('choices', $choicesNormalizer);
         $resolver->setNormalizer('choice_list', $choiceListNormalizer);
-        $resolver->setNormalizer('empty_value', $placeholderNormalizer);
         $resolver->setNormalizer('placeholder', $placeholderNormalizer);
         $resolver->setNormalizer('choice_translation_domain', $choiceTranslationDomainNormalizer);
+        $resolver->setNormalizer('choices_as_values', $choicesAsValuesNormalizer);
 
-        $resolver->setAllowedTypes('choice_list', array('null', 'Symfony\Component\Form\ChoiceList\ChoiceListInterface'));
+        $resolver->setAllowedTypes('choice_list', array('null', 'Symfony\Component\Form\ChoiceList\ChoiceListInterface', 'Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceListInterface'));
         $resolver->setAllowedTypes('choices', array('null', 'array', '\Traversable'));
         $resolver->setAllowedTypes('choice_translation_domain', array('null', 'bool', 'string'));
         $resolver->setAllowedTypes('choices_as_values', 'bool');
         $resolver->setAllowedTypes('choice_loader', array('null', 'Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface'));
-        $resolver->setAllowedTypes('choice_label', array('null', 'callable', 'string', 'Symfony\Component\PropertyAccess\PropertyPath'));
+        $resolver->setAllowedTypes('choice_label', array('null', 'bool', 'callable', 'string', 'Symfony\Component\PropertyAccess\PropertyPath'));
         $resolver->setAllowedTypes('choice_name', array('null', 'callable', 'string', 'Symfony\Component\PropertyAccess\PropertyPath'));
         $resolver->setAllowedTypes('choice_value', array('null', 'callable', 'string', 'Symfony\Component\PropertyAccess\PropertyPath'));
         $resolver->setAllowedTypes('choice_attr', array('null', 'array', 'callable', 'string', 'Symfony\Component\PropertyAccess\PropertyPath'));
         $resolver->setAllowedTypes('preferred_choices', array('array', '\Traversable', 'callable', 'string', 'Symfony\Component\PropertyAccess\PropertyPath'));
-        $resolver->setAllowedTypes('group_by', array('null', 'array', '\Traversable', 'string', 'callable', 'string', 'Symfony\Component\PropertyAccess\PropertyPath'));
+        $resolver->setAllowedTypes('group_by', array('null', 'callable', 'string', 'Symfony\Component\PropertyAccess\PropertyPath'));
     }
 
     /**
@@ -356,22 +422,15 @@ class ChoiceType extends AbstractType
      */
     public function getName()
     {
-        return 'choice';
+        return $this->getBlockPrefix();
     }
 
-    private static function flipRecursive($choices, &$output = array())
+    /**
+     * {@inheritdoc}
+     */
+    public function getBlockPrefix()
     {
-        foreach ($choices as $key => $value) {
-            if (is_array($value)) {
-                $output[$key] = array();
-                self::flipRecursive($value, $output[$key]);
-                continue;
-            }
-
-            $output[$value] = $key;
-        }
-
-        return $output;
+        return 'choice';
     }
 
     /**
@@ -418,12 +477,12 @@ class ChoiceType extends AbstractType
         );
 
         if ($options['multiple']) {
-            $choiceType = 'checkbox';
+            $choiceType = __NAMESPACE__.'\CheckboxType';
             // The user can check 0 or more checkboxes. If required
             // is true, he is required to check all of them.
             $choiceOpts['required'] = false;
         } else {
-            $choiceType = 'radio';
+            $choiceType = __NAMESPACE__.'\RadioType';
         }
 
         $builder->add($name, $choiceType, $choiceOpts);
@@ -431,14 +490,6 @@ class ChoiceType extends AbstractType
 
     private function createChoiceListView(ChoiceListInterface $choiceList, array $options)
     {
-        // If no explicit grouping information is given, use the structural
-        // information from the "choices" option for creating groups
-        if (!$options['group_by'] && $options['choices']) {
-            $options['group_by'] = !$options['choices_as_values']
-                ? self::flipRecursive($options['choices'])
-                : $options['choices'];
-        }
-
         return $this->choiceListFactory->createView(
             $choiceList,
             $options['preferred_choices'],
@@ -447,5 +498,39 @@ class ChoiceType extends AbstractType
             $options['group_by'],
             $options['choice_attr']
         );
+    }
+
+    /**
+     * When "choices_as_values" is set to false, the choices are in the keys and
+     * their labels in the values. Labels may occur twice. The form component
+     * flips the choices array in the new implementation, so duplicate labels
+     * are lost. Store them in a utility array that is used from the
+     * "choice_label" closure by default.
+     *
+     * @param array|\Traversable $choices      The choice labels indexed by choices.
+     * @param object             $choiceLabels The object that receives the choice labels
+     *                                         indexed by generated keys.
+     * @param int                $nextKey      The next generated key.
+     *
+     * @return array The choices in a normalized array with labels replaced by generated keys.
+     *
+     * @internal Public only to be accessible from closures on PHP 5.3. Don't
+     *           use this method as it may be removed without notice and will be in 3.0.
+     */
+    public static function normalizeLegacyChoices($choices, $choiceLabels, &$nextKey = 0)
+    {
+        $normalizedChoices = array();
+
+        foreach ($choices as $choice => $choiceLabel) {
+            if (is_array($choiceLabel) || $choiceLabel instanceof \Traversable) {
+                $normalizedChoices[$choice] = self::normalizeLegacyChoices($choiceLabel, $choiceLabels, $nextKey);
+                continue;
+            }
+
+            $choiceLabels->labels[$nextKey] = $choiceLabel;
+            $normalizedChoices[$choice] = $nextKey++;
+        }
+
+        return $normalizedChoices;
     }
 }

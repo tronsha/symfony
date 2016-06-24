@@ -10,7 +10,7 @@ use Symfony\Component\ExpressionLanguage\Expression;
 
 $container = new ContainerBuilder();
 $container
-    ->register('foo', 'Bar\FooClass')
+    ->register('foo', '\Bar\FooClass')
     ->addTag('foo', array('foo' => 'foo'))
     ->addTag('foo', array('bar' => 'bar', 'baz' => 'baz'))
     ->setFactory(array('Bar\\FooClass', 'getInstance'))
@@ -88,6 +88,10 @@ $container
 $container
     ->register('decorator_service_with_name', 'stdClass')
     ->setDecoratedService('decorated', 'decorated.pif-pouf')
+;
+$container
+    ->register('deprecated_service', 'stdClass')
+    ->setDeprecated(true)
 ;
 $container
     ->register('new_factory', 'FactoryClass')

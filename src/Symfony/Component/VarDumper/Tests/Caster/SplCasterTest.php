@@ -23,12 +23,12 @@ class SplCasterTest extends VarDumperTestCase
         return array(
             array(__FILE__, <<<'EOTXT'
 SplFileInfo {
-  path: "%s/Tests/Caster"
+%Apath: "%sCaster"
   filename: "SplCasterTest.php"
   basename: "SplCasterTest.php"
-  pathname: "%s/Tests/Caster/SplCasterTest.php"
+  pathname: "%sSplCasterTest.php"
   extension: "php"
-  realPath: "%s/Tests/Caster/SplCasterTest.php"
+  realPath: "%sSplCasterTest.php"
   aTime: %s-%s-%d %d:%d:%d
   mTime: %s-%s-%d %d:%d:%d
   cTime: %s-%s-%d %d:%d:%d
@@ -44,24 +44,18 @@ SplFileInfo {
   file: true
   dir: false
   link: false
-}
+%A}
 EOTXT
             ),
             array('https://google.com/about', <<<'EOTXT'
 SplFileInfo {
-  path: "https://google.com"
+%Apath: "https://google.com"
   filename: "about"
   basename: "about"
   pathname: "https://google.com/about"
   extension: ""
   realPath: false
-  writable: false
-  readable: false
-  executable: false
-  file: false
-  dir: false
-  link: false
-}
+%A}
 EOTXT
             ),
         );
@@ -79,12 +73,12 @@ EOTXT
         $var->setFlags(\SplFileObject::DROP_NEW_LINE | \SplFileObject::SKIP_EMPTY);
         $dump = <<<'EOTXT'
 SplFileObject {
-  path: "%s/Tests/Caster"
+%Apath: "%sCaster"
   filename: "SplCasterTest.php"
   basename: "SplCasterTest.php"
-  pathname: "%s/Tests/Caster/SplCasterTest.php"
+  pathname: "%sSplCasterTest.php"
   extension: "php"
-  realPath: "%s/Tests/Caster/SplCasterTest.php"
+  realPath: "%sSplCasterTest.php"
   aTime: %s-%s-%d %d:%d:%d
   mTime: %s-%s-%d %d:%d:%d
   cTime: %s-%s-%d %d:%d:%d
@@ -100,7 +94,7 @@ SplFileObject {
   file: true
   dir: false
   link: false
-  csvControl: array:2 [
+%AcsvControl: array:2 [
     0 => ","
     1 => """
   ]
@@ -111,8 +105,8 @@ SplFileObject {
     "ino" => %d
     "nlink" => %d
     "rdev" => 0
-    "blksize" => %d
-    "blocks" => %d
+    "blksize" => %i
+    "blocks" => %i
      …20
   ]
   eof: false

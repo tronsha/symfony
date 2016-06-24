@@ -23,7 +23,8 @@ class LanguageType extends AbstractType
     public function configureOptions(OptionsResolver $resolver)
     {
         $resolver->setDefaults(array(
-            'choices' => Intl::getLanguageBundle()->getLanguageNames(),
+            'choices' => array_flip(Intl::getLanguageBundle()->getLanguageNames()),
+            'choices_as_values' => true,
             'choice_translation_domain' => false,
         ));
     }
@@ -33,13 +34,21 @@ class LanguageType extends AbstractType
      */
     public function getParent()
     {
-        return 'choice';
+        return __NAMESPACE__.'\ChoiceType';
     }
 
     /**
      * {@inheritdoc}
      */
     public function getName()
+    {
+        return $this->getBlockPrefix();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getBlockPrefix()
     {
         return 'language';
     }

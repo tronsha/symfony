@@ -18,6 +18,8 @@ use Symfony\Component\Intl\Globals\IntlGlobals;
  * Parser and formatter for date formats.
  *
  * @author Igor Wiedler <igor@wiedler.ch>
+ *
+ * @internal
  */
 class FullTransformer
 {
@@ -123,7 +125,7 @@ class FullTransformer
 
         // handle unimplemented characters
         if (false !== strpos($this->notImplementedChars, $dateChars[0])) {
-            throw new NotImplementedException(sprintf("Unimplemented date character '%s' in format '%s'", $dateChars[0], $this->pattern));
+            throw new NotImplementedException(sprintf('Unimplemented date character "%s" in format "%s"', $dateChars[0], $this->pattern));
         }
     }
 
@@ -214,7 +216,7 @@ class FullTransformer
      */
     public function isQuoteMatch($quoteMatch)
     {
-        return ("'" === $quoteMatch[0]);
+        return "'" === $quoteMatch[0];
     }
 
     /**
